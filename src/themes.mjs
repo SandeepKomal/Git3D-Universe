@@ -1,0 +1,42 @@
+// Colour tokens. Every colour that reaches the SVG comes from here.
+
+export const themes = {
+  aurora: {
+    dark: true,
+    bgInner: "#12233a",
+    bgMid: "#0a1424",
+    bgOuter: "#050a14",
+    plateTop: "#14304a",
+    plateEdge: "#2d5877",
+    plateSide: "#08121f",
+    ramp: ["#12304a", "#1d6a85", "#27a6a6", "#f0b86e", "#ff6b5e"],
+    peak: "#fff1b8",
+    ink: "#eef6ff",
+    mute: "#8fa8c2",
+    rule: "#26415c",
+    ring: "#4cc9c0",
+    glow: "#27a6a6",
+    planetLight: "#ffffff",
+    stars: true,
+  },
+  daylight: {
+    dark: false,
+    bgInner: "#ffffff",
+    bgMid: "#f1f6fb",
+    bgOuter: "#e3ecf5",
+    plateTop: "#dfe9f3",
+    plateEdge: "#b6c8da",
+    plateSide: "#c4d3e2",
+    ramp: ["#cfdce9", "#8fc3dd", "#4d9fc6", "#2f6db0", "#1b3c8c"],
+    peak: "#e4572e",
+    ink: "#13243a",
+    mute: "#5a7089",
+    rule: "#c9d6e3",
+    ring: "#3f7fb5",
+    glow: "#4d9fc6",
+    planetLight: "#ffffff",
+    stars: false,
+  },
+};
+
+export const FONT_STACK = "ui-sans-serif, 'SF Pro Display', 'Segoe UI', Inter, Helvetica, Arial, sans-serif";

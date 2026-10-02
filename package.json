@@ -1,0 +1,15 @@
+{
+  "name": "profile-observatory",
+  "version": "0.1.0",
+  "description": "Generates a 3D isometric contribution terrain with orbiting repository satellites as a static SVG for GitHub profile READMEs.",
+  "type": "module",
+  "bin": { "profile-observatory": "./src/cli.mjs" },
+  "scripts": {
+    "test": "node --test",
+    "sample": "node src/cli.mjs --sample --out out/preview-dark.svg && node src/cli.mjs --sample --theme daylight --out out/preview-light.svg"
+  },
+  "engines": { "node": ">=18.3" },
+  "license": "MIT",
+  "author": "Sandeep Komal Pothu",
+  "dependencies": {}
+}

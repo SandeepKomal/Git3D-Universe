@@ -1,0 +1,37 @@
+# Copy into your profile repository as .github/workflows/observatory.yml
+# Needs a repository secret GH_PAT (personal access token, scope: read:user).
+name: Profile Observatory
+on:
+  schedule:
+    - cron: "17 18 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: observatory
+  cancel-in-progress: true
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: SandeepKomal/profile-observatory   # <- your new repo
+          path: .observatory
+          ref: v0.1.0                                    # pin a tag or commit SHA
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .observatory/src/cli.mjs --user "${{ github.repository_owner }}" --out profile/observatory-dark.svg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+      - run: node .observatory/src/cli.mjs --user "${{ github.repository_owner }}" --theme daylight --out profile/observatory-light.svg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+      - run: |
+          rm -rf .observatory
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add profile/observatory-*.svg
+          git diff --cached --quiet || (git commit -m "chore: refresh observatory" && git push)
