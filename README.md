@@ -254,6 +254,14 @@ jobs:
 
           git push origin main
 ```
+```
+<p align="center">
+  <img
+    src="./profile/observatory.svg"
+    alt="Git3D Universe Contribution Observatory"
+    width="100%">
+</p>
+```
 
 <p align="center">
   <img
