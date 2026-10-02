@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
 
-      - uses: SandeepKomal/Git3D-Universe@main
+      - uses: SandeepKomal/Git3D-Universe@v1.0.0
         with:
           username: ${{ github.repository_owner }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
