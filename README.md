@@ -112,7 +112,7 @@ jobs:
       - name: Checkout Profile Observatory
         uses: actions/checkout@v4
         with:
-          repository: RavaliMeka/profile-observatory
+          repository: SandeepKomal/Git3D-Universe
           path: .observatory
           ref: main
 
@@ -258,7 +258,7 @@ jobs:
 <p align="center">
   <img
     src="./profile/observatory.svg"
-    alt="Ravali Meka GitHub Contribution Observatory"
+    alt="Git3D Universe Contribution Observatory"
     width="100%">
 </p>
 
