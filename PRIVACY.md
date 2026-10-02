@@ -3,6 +3,12 @@
 **Git3D Universe — Privacy Notice**  
 Effective: 2026-10-02
 
+## Publisher and responsibility
+
+**Publisher:** Sandeep Komal Pothu, maintainer of [SandeepKomal/Git3D-Universe](https://github.com/SandeepKomal/Git3D-Universe).
+
+For the Git3D Universe Action, the publisher is responsible for the project's collection, processing, security, and integrity of the data described in this notice. Git3D Universe does not represent itself as collecting or processing GitHub Personal Data on GitHub's behalf.
+
 ## What Git3D Universe does
 
 Git3D Universe is a GitHub Action and local Node.js CLI that reads GitHub profile and repository information and generates a static SVG visualization.
@@ -48,6 +54,10 @@ Git3D Universe does not add a separate analytics, advertising, or telemetry serv
 ## Data retention
 
 Git3D Universe does not maintain a separate project-controlled database for the profile data it processes. Generated SVGs may remain in the user's repository according to the user's repository history, backups, forks, caches, or other GitHub retention mechanisms.
+
+## Storage location and residency
+
+Git3D Universe does not intentionally store the processed profile data in a project-operated database or separate hosting service. Workflow execution and repository storage are provided by GitHub. The country or region in which GitHub processes or stores data can depend on GitHub's infrastructure, service configuration, and any applicable organization data-residency settings. Git3D Universe does not select or independently control a separate storage country.
 
 ## Third-party components
 
