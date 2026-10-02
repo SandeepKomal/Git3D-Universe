@@ -12,33 +12,255 @@ Git3D Universe includes a root-level `action.yml` and can be distributed as a pu
 
 Before publishing a stable Marketplace release, use a reviewed release tag or immutable commit SHA in consuming workflows rather than tracking `main`.
 
-## Use as a GitHub Action
+## Use on your profile
+
+Copy this workflow into:
+
+`.github/workflows/observatory.yml`
+
+Then change `OBSERVATORY_TIMEZONE` below to your own IANA timezone.
 
 ```yaml
-name: Git3D Universe
+# Copy this file into:
+#
+# .github/workflows/observatory.yml
+#
+# Then change OBSERVATORY_TIMEZONE below to your own
+# IANA timezone.
+
+name: Profile Observatory
 
 on:
-  schedule:
-    - cron: "17 18 * * *"
   workflow_dispatch:
+
+  # Check once per hour.
+  # The actual theme is calculated using the configured
+  # local timezone.
+  schedule:
+    - cron: "17 * * * *"
 
 permissions:
   contents: write
 
+concurrency:
+  group: profile-observatory
+  cancel-in-progress: true
+
+# ============================================================
+# USER CONFIGURATION
+# ============================================================
+
+env:
+
+  # -----------------------------------------------------------
+  # Your local IANA timezone.
+  #
+  # Examples:
+  #
+  # India:
+  #   Asia/Kolkata
+  #
+  # New York:
+  #   America/New_York
+  #
+  # Los Angeles:
+  #   America/Los_Angeles
+  #
+  # London:
+  #   Europe/London
+  #
+  # Berlin:
+  #   Europe/Berlin
+  #
+  # Tokyo:
+  #   Asia/Tokyo
+  #
+  # Singapore:
+  #   Asia/Singapore
+  #
+  # Sydney:
+  #   Australia/Sydney
+  # -----------------------------------------------------------
+
+  OBSERVATORY_TIMEZONE: Asia/Kolkata
+
+  # Daylight starts at 06:00 local time.
+  OBSERVATORY_DAY_START: "06"
+
+  # Aurora/night starts at 18:00 local time.
+  OBSERVATORY_NIGHT_START: "18"
+
 jobs:
+
   generate:
+    name: Generate Profile Observatory
     runs-on: ubuntu-latest
+
     steps:
-      - name: Generate Git3D Universe
-        uses: SandeepKomal/Git3D-Universe@main
+
+      # -------------------------------------------------------
+      # Checkout profile repository
+      # -------------------------------------------------------
+      - name: Checkout profile repository
+        uses: actions/checkout@v4
         with:
-          username: ${{ github.repository_owner }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          theme: aurora
-          output: profile/git3d-universe.svg
+          fetch-depth: 0
+
+      # -------------------------------------------------------
+      # Checkout reusable generator
+      # -------------------------------------------------------
+      - name: Checkout Profile Observatory
+        uses: actions/checkout@v4
+        with:
+          repository: RavaliMeka/profile-observatory
+          path: .observatory
+          ref: main
+
+      # -------------------------------------------------------
+      # Node.js
+      # -------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # -------------------------------------------------------
+      # Determine local theme
+      # -------------------------------------------------------
+      - name: Determine Observatory theme
+        id: theme
+        shell: bash
+        env:
+          TIMEZONE: ${{ env.OBSERVATORY_TIMEZONE }}
+          DAY_START: ${{ env.OBSERVATORY_DAY_START }}
+          NIGHT_START: ${{ env.OBSERVATORY_NIGHT_START }}
+        run: |
+          set -euo pipefail
+
+          echo "Timezone: ${TIMEZONE}"
+
+          if ! TZ="${TIMEZONE}" date >/dev/null 2>&1; then
+            echo "ERROR: Invalid IANA timezone: ${TIMEZONE}"
+            exit 1
+          fi
+
+          HOUR=$(TZ="${TIMEZONE}" date +%H)
+          LOCAL_DATE=$(TZ="${TIMEZONE}" date '+%Y-%m-%d %H:%M:%S %Z')
+
+          echo "Local time: ${LOCAL_DATE}"
+          echo "Local hour: ${HOUR}"
+
+          if [ "${HOUR}" -ge "${DAY_START}" ] && \
+             [ "${HOUR}" -lt "${NIGHT_START}" ]; then
+
+            THEME="daylight"
+            MODE="DAY"
+
+          else
+
+            THEME="aurora"
+            MODE="NIGHT"
+
+          fi
+
+          echo "Theme: ${THEME}"
+          echo "Mode: ${MODE}"
+
+          echo "theme=${THEME}" >> "$GITHUB_OUTPUT"
+          echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
+          echo "local_time=${LOCAL_DATE}" >> "$GITHUB_OUTPUT"
+
+      # -------------------------------------------------------
+      # Generate SVG
+      # -------------------------------------------------------
+      - name: Generate Observatory
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USERNAME: ${{ github.repository_owner }}
+          THEME: ${{ steps.theme.outputs.theme }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p profile
+
+          node .observatory/src/cli.mjs \
+            --user "${USERNAME}" \
+            --theme "${THEME}" \
+            --out profile/observatory.svg
+
+          ls -lh profile/observatory.svg
+
+      # -------------------------------------------------------
+      # Validate SVG
+      # -------------------------------------------------------
+      - name: Validate Observatory
+        env:
+          SVG: profile/observatory.svg
+          EXPECTED_LOGIN: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+
+          test -f "${SVG}"
+          test -s "${SVG}"
+
+          grep -q "<svg" "${SVG}"
+          grep -q "</svg>" "${SVG}"
+
+          grep -q "@${EXPECTED_LOGIN}" "${SVG}"
+
+          grep -q "contributions" "${SVG}"
+          grep -q "active days" "${SVG}"
+          grep -q "current streak" "${SVG}"
+          grep -q "longest streak" "${SVG}"
+
+          if grep -q "Ada Example" "${SVG}"; then
+            echo "ERROR: Sample profile detected."
+            exit 1
+          fi
+
+          if grep -q "ada-example" "${SVG}"; then
+            echo "ERROR: Sample GitHub login detected."
+            exit 1
+          fi
+
+          SIZE=$(wc -c < "${SVG}")
+
+          if [ "${SIZE}" -lt 5000 ]; then
+            echo "ERROR: Generated SVG is unexpectedly small."
+            exit 1
+          fi
+
+          echo "Validation passed."
+
+      # -------------------------------------------------------
+      # Commit
+      # -------------------------------------------------------
+      - name: Commit Observatory
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add profile/observatory.svg
+
+          if git diff --cached --quiet; then
+            echo "No changes detected."
+            exit 0
+          fi
+
+          git commit \
+            -m "chore: update profile observatory (${{ steps.theme.outputs.mode }})"
+
+          git push origin main
 ```
 
-For production use, replace `@main` with a reviewed release such as `@v1.0.0` or a full immutable commit SHA after the first stable Marketplace release is published.
+<p align="center">
+  <img
+    src="./profile/observatory.svg"
+    alt="Ravali Meka GitHub Contribution Observatory"
+    width="100%">
+</p>
 
 ### Inputs
 
