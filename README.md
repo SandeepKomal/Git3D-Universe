@@ -14,11 +14,13 @@ Before publishing a stable Marketplace release, use a reviewed release tag or im
 
 ## Use on your profile
 
-Copy this workflow into:
+This workflow installs Git3D Universe directly from the GitHub Action. Copy it into your profile repository as:
 
 `.github/workflows/observatory.yml`
 
-Then change `OBSERVATORY_TIMEZONE` below to your own IANA timezone.
+Then change `OBSERVATORY_TIMEZONE` to your own IANA timezone. The workflow checks once per hour and selects `daylight` from the configured day-start hour through the configured night-start hour, otherwise `aurora`.
+
+For production, use the stable release tag `v1.0.0` or an immutable commit SHA.
 
 ```yaml
 # Copy this file into:
@@ -28,7 +30,7 @@ Then change `OBSERVATORY_TIMEZONE` below to your own IANA timezone.
 # Then change OBSERVATORY_TIMEZONE below to your own
 # IANA timezone.
 
-name: Profile Observatory
+name: Git3D Universe
 
 on:
   workflow_dispatch:
@@ -43,91 +45,32 @@ permissions:
   contents: write
 
 concurrency:
-  group: profile-observatory
+  group: git3d-universe
   cancel-in-progress: true
 
-# ============================================================
-# USER CONFIGURATION
-# ============================================================
-
 env:
-
-  # -----------------------------------------------------------
-  # Your local IANA timezone.
-  #
   # Examples:
-  #
-  # India:
-  #   Asia/Kolkata
-  #
-  # New York:
-  #   America/New_York
-  #
-  # Los Angeles:
-  #   America/Los_Angeles
-  #
-  # London:
-  #   Europe/London
-  #
-  # Berlin:
-  #   Europe/Berlin
-  #
-  # Tokyo:
-  #   Asia/Tokyo
-  #
-  # Singapore:
-  #   Asia/Singapore
-  #
-  # Sydney:
-  #   Australia/Sydney
-  # -----------------------------------------------------------
-
+  # India: Asia/Kolkata
+  # New York: America/New_York
+  # London: Europe/London
+  # Tokyo: Asia/Tokyo
   OBSERVATORY_TIMEZONE: Asia/Kolkata
 
-  # Daylight starts at 06:00 local time.
   OBSERVATORY_DAY_START: "06"
-
-  # Aurora/night starts at 18:00 local time.
   OBSERVATORY_NIGHT_START: "18"
 
 jobs:
-
   generate:
-    name: Generate Profile Observatory
+    name: Generate Git3D Universe
     runs-on: ubuntu-latest
 
     steps:
-
-      # -------------------------------------------------------
-      # Checkout profile repository
-      # -------------------------------------------------------
       - name: Checkout profile repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
         with:
           fetch-depth: 0
 
-      # -------------------------------------------------------
-      # Checkout reusable generator
-      # -------------------------------------------------------
-      - name: Checkout Profile Observatory
-        uses: actions/checkout@v4
-        with:
-          repository: SandeepKomal/Git3D-Universe
-          path: .observatory
-          ref: main
-
-      # -------------------------------------------------------
-      # Node.js
-      # -------------------------------------------------------
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      # -------------------------------------------------------
-      # Determine local theme
-      # -------------------------------------------------------
-      - name: Determine Observatory theme
+      - name: Determine local theme
         id: theme
         shell: bash
         env:
@@ -136,8 +79,6 @@ jobs:
           NIGHT_START: ${{ env.OBSERVATORY_NIGHT_START }}
         run: |
           set -euo pipefail
-
-          echo "Timezone: ${TIMEZONE}"
 
           if ! TZ="${TIMEZONE}" date >/dev/null 2>&1; then
             echo "ERROR: Invalid IANA timezone: ${TIMEZONE}"
@@ -148,19 +89,13 @@ jobs:
           LOCAL_DATE=$(TZ="${TIMEZONE}" date '+%Y-%m-%d %H:%M:%S %Z')
 
           echo "Local time: ${LOCAL_DATE}"
-          echo "Local hour: ${HOUR}"
 
-          if [ "${HOUR}" -ge "${DAY_START}" ] && \
-             [ "${HOUR}" -lt "${NIGHT_START}" ]; then
-
+          if [ "${HOUR}" -ge "${DAY_START}" ] &&              [ "${HOUR}" -lt "${NIGHT_START}" ]; then
             THEME="daylight"
             MODE="DAY"
-
           else
-
             THEME="aurora"
             MODE="NIGHT"
-
           fi
 
           echo "Theme: ${THEME}"
@@ -168,31 +103,15 @@ jobs:
 
           echo "theme=${THEME}" >> "$GITHUB_OUTPUT"
           echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
-          echo "local_time=${LOCAL_DATE}" >> "$GITHUB_OUTPUT"
 
-      # -------------------------------------------------------
-      # Generate SVG
-      # -------------------------------------------------------
-      - name: Generate Observatory
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          USERNAME: ${{ github.repository_owner }}
-          THEME: ${{ steps.theme.outputs.theme }}
-        run: |
-          set -euo pipefail
+      - name: Generate Git3D Universe
+        uses: SandeepKomal/Git3D-Universe@v1.0.0
+        with:
+          username: ${{ github.repository_owner }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          theme: ${{ steps.theme.outputs.theme }}
+          output: profile/observatory.svg
 
-          mkdir -p profile
-
-          node .observatory/src/cli.mjs \
-            --user "${USERNAME}" \
-            --theme "${THEME}" \
-            --out profile/observatory.svg
-
-          ls -lh profile/observatory.svg
-
-      # -------------------------------------------------------
-      # Validate SVG
-      # -------------------------------------------------------
       - name: Validate Observatory
         env:
           SVG: profile/observatory.svg
@@ -200,41 +119,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          test -f "${SVG}"
           test -s "${SVG}"
-
           grep -q "<svg" "${SVG}"
           grep -q "</svg>" "${SVG}"
-
-          grep -q "@${EXPECTED_LOGIN}" "${SVG}"
-
+          grep -qi "@${EXPECTED_LOGIN}" "${SVG}"
           grep -q "contributions" "${SVG}"
           grep -q "active days" "${SVG}"
           grep -q "current streak" "${SVG}"
           grep -q "longest streak" "${SVG}"
 
-          if grep -q "Ada Example" "${SVG}"; then
+          if grep -q "Ada Example" "${SVG}" || grep -q "ada-example" "${SVG}"; then
             echo "ERROR: Sample profile detected."
             exit 1
           fi
 
-          if grep -q "ada-example" "${SVG}"; then
-            echo "ERROR: Sample GitHub login detected."
-            exit 1
-          fi
-
           SIZE=$(wc -c < "${SVG}")
-
           if [ "${SIZE}" -lt 5000 ]; then
             echo "ERROR: Generated SVG is unexpectedly small."
             exit 1
           fi
 
-          echo "Validation passed."
-
-      # -------------------------------------------------------
-      # Commit
-      # -------------------------------------------------------
       - name: Commit Observatory
         run: |
           set -euo pipefail
@@ -249,25 +153,14 @@ jobs:
             exit 0
           fi
 
-          git commit \
-            -m "chore: update profile observatory (${{ steps.theme.outputs.mode }})"
-
+          git commit -m "chore: update Git3D Universe (${{ steps.theme.outputs.mode }})"
           git push origin main
-```
-```
-<p align="center">
-  <img
-    src="./profile/observatory.svg"
-    alt="Git3D Universe Contribution Observatory"
-    width="100%">
-</p>
-```
 
 <p align="center">
-  <img
-    src="./profile/observatory.svg"
-    alt="Git3D Universe Contribution Observatory"
-    width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="./preview-light.svg">
+    <img src="./preview-dark.svg" alt="Git3D Universe Contribution Observatory preview" width="100%">
+  </picture>
 </p>
 
 ### Inputs
@@ -341,6 +234,16 @@ See [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md) for external Action/depen
 | `src/github.mjs` | GitHub GraphQL data retrieval |
 | `src/sample.mjs` | Deterministic sample data |
 | `test/` | Unit and rendering tests |
+
+## Support
+
+For bugs and feature requests, use the [GitHub issue tracker](https://github.com/SandeepKomal/Git3D-Universe/issues).
+
+For security vulnerabilities, follow [SECURITY.md](./SECURITY.md) and do not disclose sensitive details in a public issue.
+
+For licensing and provenance information, see [EULA.md](./EULA.md) and [ORIGINALITY-AND-LICENSING.md](./ORIGINALITY-AND-LICENSING.md).
+
+For privacy information, see [PRIVACY.md](./PRIVACY.md).
 
 ## Copyright and licensing
 
