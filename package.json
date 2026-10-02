@@ -1,15 +1,32 @@
 {
-  "name": "profile-observatory",
-  "version": "0.1.0",
-  "description": "Generates a 3D isometric contribution terrain with orbiting repository satellites as a static SVG for GitHub profile READMEs.",
+  "name": "git3d-universe",
+  "version": "1.0.0",
+  "description": "Generate a 3D GitHub contribution universe as a static SVG for profile READMEs.",
   "type": "module",
-  "bin": { "profile-observatory": "./src/cli.mjs" },
+  "bin": {
+    "git3d-universe": "./src/cli.mjs"
+  },
   "scripts": {
     "test": "node --test",
     "sample": "node src/cli.mjs --sample --out out/preview-dark.svg && node src/cli.mjs --sample --theme daylight --out out/preview-light.svg"
   },
-  "engines": { "node": ">=18.3" },
+  "engines": {
+    "node": ">=18.3"
+  },
   "license": "MIT",
   "author": "Sandeep Komal Pothu",
-  "dependencies": {}
+  "dependencies": {},
+  "repository": "https://github.com/SandeepKomal/Git3D-Universe",
+  "homepage": "https://github.com/SandeepKomal/Git3D-Universe",
+  "bugs": "https://github.com/SandeepKomal/Git3D-Universe/issues",
+  "keywords": [
+    "github-action",
+    "github-profile",
+    "contributions",
+    "3d",
+    "svg",
+    "visualization",
+    "developer-profile",
+    "open-source"
+  ]
 }
