@@ -257,8 +257,8 @@ jobs:
 ```
 <p align="center">
   <img
-    src="./profile/observatory.svg"
-    alt="Git3D Universe Contribution Observatory"
+    src="./preview-dark.svg"
+    alt="Git3D Universe Contribution Observatory preview"
     width="100%">
 </p>
 ```
@@ -269,6 +269,9 @@ jobs:
     alt="Git3D Universe Contribution Observatory"
     width="100%">
 </p>
+
+
+The preview above is the repository's committed showcase asset. The workflow shown above generates `profile/observatory.svg` in the **profile repository where you install the workflow** (for example, `RavaliMeka/RavaliMeka`), so that path is not expected to exist inside this generator repository.
 
 ### Inputs
 
