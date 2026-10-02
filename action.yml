@@ -34,10 +34,14 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        GIT3D_USERNAME: ${{ inputs.username }}
+        GIT3D_THEME: ${{ inputs.theme }}
+        GIT3D_OUTPUT: ${{ inputs.output }}
+        GIT3D_NO_MOTION: ${{ inputs.no-motion }}
       run: |
         set -euo pipefail
 
-        user="${{ inputs.username }}"
+        user="${GIT3D_USERNAME}"
         if [[ -z "${user}" ]]; then
           user="${GITHUB_REPOSITORY_OWNER}"
         fi
@@ -45,11 +49,11 @@ runs:
         args=(
           "${GITHUB_ACTION_PATH}/src/cli.mjs"
           --user "${user}"
-          --theme "${{ inputs.theme }}"
-          --out "${{ inputs.output }}"
+          --theme "${GIT3D_THEME}"
+          --out "${GIT3D_OUTPUT}"
         )
 
-        if [[ "${{ inputs.no-motion }}" == "true" ]]; then
+        if [[ "${GIT3D_NO_MOTION}" == "true" ]]; then
           args+=(--no-motion)
         fi
 
