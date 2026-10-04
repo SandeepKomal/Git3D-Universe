@@ -61,7 +61,7 @@ function terrain(data, stats, t, project) {
       svg += poly(
         [project(u, v), project(u + size, v), project(u + size, v + size), project(u, v + size)],
         base,
-        ` opacity=".6"`
+        ` opacity="${t.dark ? ".72" : ".6"}" stroke="${t.cellEdge}" stroke-width=".45" stroke-opacity="${t.dark ? ".62" : ".5"}"`
       );
       continue;
     }
