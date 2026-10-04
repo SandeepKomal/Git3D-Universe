@@ -2,38 +2,75 @@
 name: Git3D Universe
 
 on:
-  schedule:
-    - cron: "17 18 * * *"
   workflow_dispatch:
+
+  schedule:
+    # Refresh once per hour.
+    # Minute 17 avoids the top-of-hour schedule spike.
+    - cron: "17 * * * *"
 
 permissions:
   contents: write
 
 concurrency:
   group: git3d-universe
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
-  render:
+  generate:
+    name: Generate Git3D Universe
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
 
-      - uses: SandeepKomal/Git3D-Universe@v1.0.0
+    steps:
+      - name: Checkout profile repository
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Generate Git3D Universe
+        uses: SandeepKomal/Git3D-Universe@v1.0.0
         with:
           username: ${{ github.repository_owner }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           theme: aurora
           output: profile/git3d-universe.svg
 
-      - name: Commit visualization
+      - name: Validate Git3D Universe
+        shell: bash
+        env:
+          SVG: profile/git3d-universe.svg
+          EXPECTED_LOGIN: ${{ github.repository_owner }}
         run: |
+          set -euo pipefail
+
+          test -s "${SVG}"
+          grep -q "<svg" "${SVG}"
+          grep -q "</svg>" "${SVG}"
+          grep -qi "@${EXPECTED_LOGIN}" "${SVG}"
+
+          SIZE=$(wc -c < "${SVG}")
+          if [ "${SIZE}" -lt 5000 ]; then
+            echo "ERROR: Generated SVG is unexpectedly small."
+            exit 1
+          fi
+
+          echo "Git3D Universe generated successfully."
+          echo "SVG size: ${SIZE} bytes"
+
+      - name: Commit Git3D Universe
+        shell: bash
+        run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add profile/git3d-universe.svg
+
           if git diff --cached --quiet; then
-            echo "No Git3D changes."
-          else
-            git commit -m "chore: refresh Git3D Universe"
-            git push
+            echo "No Git3D changes detected."
+            exit 0
           fi
+
+          git commit -m "chore: update Git3D Universe"
+          git push origin main
