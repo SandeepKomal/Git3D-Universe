@@ -14,21 +14,24 @@ Use the reviewed release tag or an immutable commit SHA in consuming workflows r
 
 ## Use on your profile
 
-This workflow installs Git3D Universe directly from the published Action. Copy it into your profile repository as:
+This workflow installs Git3D Universe directly from the published Action.
+
+### Step 1 — Add the workflow
+
+Create this file in your profile repository:
 
 `.github/workflows/git3d-universe.yml`
 
-Then change `OBSERVATORY_TIMEZONE` to your own IANA timezone. The workflow checks once per hour and selects `daylight` from the configured day-start hour through the configured night-start hour, otherwise `aurora`.
+The workflow refreshes the SVG once per hour, chooses a light or dark theme from your local timezone, validates the generated SVG, and commits it back to the repository.
 
 For production, use the stable release tag `v1.0.0` or an immutable commit SHA.
 
 ```yaml
 # Copy this file into:
 #
-# .github/workflows/observatory.yml
+# .github/workflows/git3d-universe.yml
 #
-# Then change OBSERVATORY_TIMEZONE below to your own
-# IANA timezone.
+# Change the timezone below to your own IANA timezone.
 
 name: Git3D Universe
 
@@ -54,10 +57,10 @@ env:
   # New York: America/New_York
   # London: Europe/London
   # Tokyo: Asia/Tokyo
-  OBSERVATORY_TIMEZONE: Asia/Kolkata
+  GIT3D_TIMEZONE: Asia/Kolkata
 
-  OBSERVATORY_DAY_START: "06"
-  OBSERVATORY_NIGHT_START: "18"
+  GIT3D_DAY_START: "06"
+  GIT3D_NIGHT_START: "18"
 
 jobs:
   generate:
@@ -74,9 +77,9 @@ jobs:
         id: theme
         shell: bash
         env:
-          TIMEZONE: ${{ env.OBSERVATORY_TIMEZONE }}
-          DAY_START: ${{ env.OBSERVATORY_DAY_START }}
-          NIGHT_START: ${{ env.OBSERVATORY_NIGHT_START }}
+          TIMEZONE: ${{ env.GIT3D_TIMEZONE }}
+          DAY_START: ${{ env.GIT3D_DAY_START }}
+          NIGHT_START: ${{ env.GIT3D_NIGHT_START }}
         run: |
           set -euo pipefail
 
@@ -156,12 +159,19 @@ jobs:
           git commit -m "chore: update Git3D Universe (${{ steps.theme.outputs.mode }})"
           git push origin main
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="./preview-light.svg">
-    <img src="./preview-dark.svg" alt="Git3D Universe Contribution Observatory preview" width="100%">
-  </picture>
-</p>
+### Step 2 — Add Git3D Universe to your README
+
+After the workflow runs once, it creates:
+
+`profile/git3d-universe.svg`
+
+Add this Markdown to your profile README:
+
+```md
+![Git3D Universe](./profile/git3d-universe.svg)
+```
+
+Do not paste the generated SVG into `README.md`; keep it as the generated file and reference it with a normal Markdown image.
 
 ### Inputs
 
@@ -210,8 +220,8 @@ Options:
 
 ## Themes
 
-- `aurora` — dark observatory
-- `daylight` — light observatory
+- `aurora` — dark Git3D Universe theme
+- `daylight` — light Git3D Universe theme
 
 ## Security properties
 
