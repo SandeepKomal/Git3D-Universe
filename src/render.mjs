@@ -61,13 +61,15 @@ function terrain(data, stats, t, project) {
       svg += poly(
         [project(u, v), project(u + size, v), project(u + size, v + size), project(u, v + size)],
         base,
-        ` opacity=".6"`
+        ` opacity="${t.dark ? ".72" : ".6"}" stroke="${t.cellEdge}" stroke-width=".45" stroke-opacity="${t.dark ? ".62" : ".5"}"`
       );
       continue;
     }
     const height = 3 + Math.pow(day.count / stats.max, 0.8) * 70;
     for (const face of prismFaces(project, u, v, size, height)) {
-      svg += poly(face.pts, adjust(base, face.shade), face.top && isPeak ? ` filter="url(#glow)"` : "");
+      const edge = face.top ? ` stroke="${t.cellEdge}" stroke-width=".45" stroke-opacity=".62"` : "";
+      const glow = face.top && isPeak ? ` filter="url(#glow)"` : "";
+      svg += poly(face.pts, adjust(base, face.shade), `${edge}${glow}`);
     }
   }
 
