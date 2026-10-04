@@ -67,7 +67,9 @@ function terrain(data, stats, t, project) {
     }
     const height = 3 + Math.pow(day.count / stats.max, 0.8) * 70;
     for (const face of prismFaces(project, u, v, size, height)) {
-      svg += poly(face.pts, adjust(base, face.shade), face.top && isPeak ? ` filter="url(#glow)"` : "");
+      const edge = face.top ? ` stroke="${t.cellEdge}" stroke-width=".45" stroke-opacity=".62"` : "";
+      const glow = face.top && isPeak ? ` filter="url(#glow)"` : "";
+      svg += poly(face.pts, adjust(base, face.shade), `${edge}${glow}`);
     }
   }
 
