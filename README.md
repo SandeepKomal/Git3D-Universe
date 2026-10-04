@@ -8,15 +8,15 @@ Git3D Universe generates a self-contained SVG that visualizes a GitHub contribut
 
 ## GitHub Marketplace
 
-Git3D Universe includes a root-level `action.yml` and can be distributed as a public GitHub Action.
+Git3D Universe is published as a reusable GitHub Action. The stable release is `v1.0.0`.
 
-Before publishing a stable Marketplace release, use a reviewed release tag or immutable commit SHA in consuming workflows rather than tracking `main`.
+Use the reviewed release tag or an immutable commit SHA in consuming workflows rather than tracking `main`.
 
 ## Use on your profile
 
-This workflow installs Git3D Universe directly from the GitHub Action. Copy it into your profile repository as:
+This workflow installs Git3D Universe directly from the published Action. Copy it into your profile repository as:
 
-`.github/workflows/observatory.yml`
+`.github/workflows/git3d-universe.yml`
 
 Then change `OBSERVATORY_TIMEZONE` to your own IANA timezone. The workflow checks once per hour and selects `daylight` from the configured day-start hour through the configured night-start hour, otherwise `aurora`.
 
@@ -90,7 +90,7 @@ jobs:
 
           echo "Local time: ${LOCAL_DATE}"
 
-          if [ "${HOUR}" -ge "${DAY_START}" ] &&              [ "${HOUR}" -lt "${NIGHT_START}" ]; then
+          if [ "${HOUR}" -ge "${DAY_START}" ] && [ "${HOUR}" -lt "${NIGHT_START}" ]; then
             THEME="daylight"
             MODE="DAY"
           else
@@ -110,11 +110,11 @@ jobs:
           username: ${{ github.repository_owner }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           theme: ${{ steps.theme.outputs.theme }}
-          output: profile/observatory.svg
+          output: profile/git3d-universe.svg
 
-      - name: Validate Observatory
+      - name: Validate Git3D Universe
         env:
-          SVG: profile/observatory.svg
+          SVG: profile/git3d-universe.svg
           EXPECTED_LOGIN: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
@@ -139,14 +139,14 @@ jobs:
             exit 1
           fi
 
-      - name: Commit Observatory
+      - name: Commit Git3D Universe
         run: |
           set -euo pipefail
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add profile/observatory.svg
+          git add profile/git3d-universe.svg
 
           if git diff --cached --quiet; then
             echo "No changes detected."
@@ -178,6 +178,8 @@ jobs:
 Start with the least privilege your workflow needs. The example grants `contents: write` because it is intended to commit the generated SVG back to a profile repository.
 
 The Action passes the supplied token through the `GITHUB_TOKEN` environment variable. It does not place the token in command-line arguments.
+
+The Action generates the SVG file; it does not edit `README.md`. Your workflow commits the SVG to the repository, and your README displays it with a normal Markdown image reference such as `![Git3D Universe](./profile/git3d-universe.svg)`.
 
 The renderer requests GitHub data directly from `https://api.github.com/graphql` and does not use a hosted rendering service.
 
