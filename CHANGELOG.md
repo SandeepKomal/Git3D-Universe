@@ -2,6 +2,17 @@
 
 All notable changes to Git3D Universe are documented here.
 
+## [1.0.1] - 2026-10-04
+
+### Dark theme and documentation patch
+- Improved `aurora` dark-theme terrain contrast.
+- Added visible contribution-cell edges for clearer 3D grid separation.
+- Improved visibility of low-activity and empty grid cells in dark mode.
+- Preserved the existing daylight theme.
+- Added rendering test coverage for terrain edge styling.
+- Updated profile usage documentation for the `v1.0.1` Marketplace release.
+
+
 ## [1.0.0] - 2026-10-02
 
 ### Marketplace release
