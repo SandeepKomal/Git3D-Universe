@@ -28,7 +28,7 @@ jobs:
           fetch-depth: 0
 
       - name: Generate Git3D Universe
-        uses: SandeepKomal/Git3D-Universe@v1.0.0
+        uses: SandeepKomal/Git3D-Universe@v1.0.1
         with:
           username: ${{ github.repository_owner }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
