@@ -11,6 +11,7 @@ for (const theme of Object.keys(themes)) {
     assert.ok(svg.trimEnd().endsWith("</svg>"));
     assert.ok(!/NaN|undefined|Infinity/.test(svg), "no invalid numbers or undefined values");
     assert.ok(svg.length < 600_000, "stays comfortably small for a README");
+    assert.match(svg, new RegExp(`stroke="${themes[theme].cellEdge}"`), "terrain uses visible cell edges");
   });
 }
 
