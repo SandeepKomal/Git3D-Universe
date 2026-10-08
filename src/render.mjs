@@ -207,6 +207,68 @@ function beacon(peakTop, stats, t) {
 </g>`;
 }
 
+function hashName(name) {
+  let h = 2166136261;
+  for (const ch of String(name)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return h >>> 0;
+}
+
+// A lit sphere: base gradient with a highlight toward the scene light, tilted
+// cloud bands and a drifting storm spot clipped to the disc, a terminator
+// shadow, a specular glint, an atmosphere rim, and for the lead planet a
+// banded ring that passes behind and in front of the body.
+function planetSphere(i, r, color, seed, ringed, animate, t) {
+  const rand = lcg(seed % 100000 + 1);
+  const id = `pl${i}`;
+  const light = mix(color, "#ffffff", 0.55);
+  const defs = `<radialGradient id="${id}b" cx="50%" cy="50%" r="50%" fx="33%" fy="30%">` +
+    `<stop offset="0" stop-color="${light}"/><stop offset=".28" stop-color="${adjust(color, 1.12)}"/>` +
+    `<stop offset=".62" stop-color="${color}"/><stop offset=".88" stop-color="${adjust(color, 0.42)}"/>` +
+    `<stop offset="1" stop-color="${adjust(color, 0.2)}"/></radialGradient>` +
+    `<radialGradient id="${id}a" r="50%"><stop offset=".7" stop-color="${color}" stop-opacity="0"/>` +
+    `<stop offset=".79" stop-color="${adjust(color, 1.3)}" stop-opacity=".38"/><stop offset=".88" stop-color="${color}" stop-opacity=".1"/>` +
+    `<stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient>` +
+    `<clipPath id="${id}c"><circle r="${r1(r)}"/></clipPath>`;
+
+  // Cloud bands: soft tilted stripes, alternating lighter and darker.
+  const tilt = -14 + rand() * 10;
+  let bands = "";
+  const n = 3 + Math.floor(rand() * 3);
+  for (let k = 0; k < n; k++) {
+    const y = r1(-r + ((k + 0.5) * 2 * r) / n + (rand() - 0.5) * r * 0.2);
+    const h = r1(r * (0.1 + rand() * 0.16));
+    const tone = k % 2 ? adjust(color, 0.62) : mix(color, "#ffffff", 0.35);
+    bands += `<ellipse cx="0" cy="${y}" rx="${r1(r * 1.5)}" ry="${h}" fill="${tone}" opacity="${r1(0.18 + rand() * 0.16)}"/>`;
+  }
+  const spotY = r1((rand() - 0.5) * r * 0.9);
+  const spotDur = r1(18 + rand() * 14);
+  const spot = `<ellipse cx="${r1((rand() - 0.5) * r)}" cy="${spotY}" rx="${r1(r * 0.26)}" ry="${r1(r * 0.12)}" fill="${adjust(color, 0.55)}" opacity=".45">` +
+    (animate ? `<animate attributeName="cx" values="${r1(-r * 1.4)};${r1(r * 1.4)}" dur="${spotDur}s" begin="${r1(-rand() * spotDur)}s" repeatCount="indefinite"/>` : "") +
+    `</ellipse>`;
+
+  const ringArc = (rx, ry, sweep, width, op, tone) =>
+    `<path d="M${r1(-rx)},0 A${r1(rx)},${r1(ry)} 0 0,${sweep} ${r1(rx)},0" fill="none" stroke="${tone}" stroke-opacity="${op}" stroke-width="${width}"/>`;
+  const ringSet = (sweep, k) =>
+    `<g transform="rotate(-18)">` +
+    ringArc(r * 1.55, r * 0.36, sweep, r1(r * 0.16), r1(0.55 * k), mix(color, "#ffffff", 0.4)) +
+    ringArc(r * 1.85, r * 0.43, sweep, r1(r * 0.2), r1(0.75 * k), adjust(color, 1.2)) +
+    ringArc(r * 2.15, r * 0.5, sweep, r1(r * 0.08), r1(0.45 * k), mix(color, "#ffffff", 0.6)) +
+    `</g>`;
+
+  const svg =
+    `<circle r="${r1(r * 1.28)}" fill="url(#${id}a)"/>` +
+    (ringed ? ringSet(1, 0.75) : "") +
+    `<circle r="${r1(r)}" fill="url(#${id}b)"/>` +
+    `<g clip-path="url(#${id}c)"><g transform="rotate(${r1(tilt)})">${bands}${spot}</g>` +
+    (ringed ? `<ellipse cx="0" cy="${r1(r * 0.18)}" rx="${r1(r * 1.9)}" ry="${r1(r * 0.12)}" fill="#000" opacity=".28" transform="rotate(-18)"/>` : "") +
+    `</g>` +
+    `<circle r="${r1(r)}" fill="url(#plTerm)"/>` +
+    `<ellipse cx="${r1(-r * 0.36)}" cy="${r1(-r * 0.42)}" rx="${r1(r * 0.3)}" ry="${r1(r * 0.17)}" fill="url(#plSpec)" transform="rotate(-38 ${r1(-r * 0.36)} ${r1(-r * 0.42)})"/>` +
+    `<path d="M${r1(r * Math.cos(3.5))},${r1(r * Math.sin(3.5))} A${r1(r)},${r1(r)} 0 0,1 ${r1(r * Math.cos(5.1))},${r1(r * Math.sin(5.1))}" fill="none" stroke="${t.planetLight}" stroke-opacity=".3" stroke-width=".7" stroke-linecap="round"/>` +
+    (ringed ? ringSet(0, 1) : "");
+  return { defs, svg };
+}
+
 const RINGS = [440, 515, 590];
 const RING_FLATTEN = 0.2;
 
@@ -225,8 +287,9 @@ function orbits(data, t, animate) {
     const ring = i % RINGS.length;
     const R = RINGS[ring];
     const ry = r1(R * RING_FLATTEN);
-    const radius = 8 + 9 * Math.sqrt(repo.stars / maxStars);
-    const color = HEX.test(repo.color || "") ? repo.color : t.glow;
+    const radius = 14 + 10 * Math.sqrt(repo.stars / maxStars);
+    const seed = hashName(repo.name);
+    const color = HEX.test(repo.color || "") ? repo.color : t.planets[seed % t.planets.length];
     const name = esc(repo.name.length > 18 ? `${repo.name.slice(0, 17)}…` : repo.name);
     const starsLabel = repo.stars > 0 ? `<tspan fill="${t.mute}" font-weight="500"> ★${Number(repo.stars) | 0}</tspan>` : "";
     const duration = 52 + ring * 20 + i * 3;
@@ -250,19 +313,11 @@ function orbits(data, t, animate) {
     const place = animate ? "" : ` transform="translate(${r1(CX + R * Math.cos(angle))} ${r1(CY + R * RING_FLATTEN * near)})"`;
     const staticScale = animate ? "" : ` transform="scale(${r1((1 + 0.18 * near) * 100) / 100})"`;
 
-    const halo = i === 0
-      ? [
-          `<path d="M${r1(-radius * 1.9)},0 A${r1(radius * 1.9)},${r1(radius * 0.5)} 0 0,1 ${r1(radius * 1.9)},0" fill="none" stroke="${color}" stroke-opacity=".55" stroke-width="1.6" transform="rotate(-16)"/>`,
-          `<path d="M${r1(-radius * 1.9)},0 A${r1(radius * 1.9)},${r1(radius * 0.5)} 0 0,0 ${r1(radius * 1.9)},0" fill="none" stroke="${color}" stroke-opacity=".8" stroke-width="1.6" transform="rotate(-16)"/>`,
-        ]
-      : ["", ""];
-
+    const sphere = planetSphere(i, radius, color, seed, i === 0, animate, t);
+    defs.push(sphere.defs);
     const body = `<g${place}>${motion}<g${staticScale}>${scale}
-  <ellipse cx="0" cy="${r1(radius + 5)}" rx="${r1(radius * 1.1)}" ry="${r1(radius * 0.3)}" fill="#000" opacity=".28"/>
-  <circle r="${r1(radius + 3.5)}" fill="${color}" opacity=".16"/>
-  ${halo[0]}<circle r="${r1(radius)}" fill="${color}"/>
-  <circle r="${r1(radius)}" fill="url(#planetShade)"/>
-  <circle r="${r1(radius - 0.6)}" fill="none" stroke="${t.planetLight}" stroke-opacity=".35" stroke-width=".8"/>${halo[1]}
+  <ellipse cx="0" cy="${r1(radius + 7)}" rx="${r1(radius * 1.15)}" ry="${r1(radius * 0.28)}" fill="#000" opacity=".3" filter="url(#soft4)"/>
+  ${sphere.svg}
 </g></g>`;
 
     // Labels sit above everything so they stay readable when the planet is
@@ -271,10 +326,11 @@ function orbits(data, t, animate) {
     const fadeAnim = animate
       ? `<animate attributeName="opacity" values="${scales.map((_, k) => fade(Math.sin((2 * Math.PI * k) / samples))).join(";")}" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
       : "";
-    const label = `<g${place}>${motion}<g${staticScale}>${scale}<text y="${r1(-radius - 9)}" text-anchor="middle" font-size="11" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"${animate ? "" : ` opacity="${fade(near)}"`}>${fadeAnim}${name}${starsLabel}</text></g></g>`;
+    const label = `<g${place}>${motion}<g${staticScale}>${scale}<text y="${r1(-radius - 11)}" text-anchor="middle" font-size="12" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"${animate ? "" : ` opacity="${fade(near)}"`}>${fadeAnim}${name}${starsLabel}</text></g></g>`;
     return { body, label, near };
   };
 
+  const defs = [];
   const bodies = repos.map(planet);
   const layer = (clip, pick) =>
     animate
@@ -285,6 +341,7 @@ function orbits(data, t, animate) {
     back: RINGS.map((R, i) => ringPath(R, i, 1)).join("") + layer("farSide", (b) => b.near < 0),
     front: RINGS.map((R, i) => ringPath(R, i, 0)).join("") + layer("nearSide", (b) => b.near >= 0),
     labels: bodies.map((b) => b.label).join("\n"),
+    defs: defs.join("\n"),
   };
 }
 
@@ -374,7 +431,7 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
     `current streak ${stats.current} days, longest streak ${stats.longest} days` +
     (stats.peak.date ? `, busiest day ${stats.peak.date} with ${stats.max} contributions.` : ".");
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(label)}" font-family="${FONT_STACK}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(label)}" font-family="${FONT_STACK}" text-rendering="geometricPrecision">
 <title>${esc(label)}</title>
 <desc>${esc(desc)}</desc>
 <defs>
@@ -389,7 +446,10 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   <linearGradient id="plateFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${adjust(t.plateTop, 0.85)}"/><stop offset="1" stop-color="${adjust(t.plateTop, 1.08)}"/></linearGradient>
   <linearGradient id="rimFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.glow}" stop-opacity=".9"/><stop offset=".6" stop-color="${t.glow}" stop-opacity=".45"/><stop offset="1" stop-color="${t.glow}" stop-opacity=".1"/></linearGradient>
   <linearGradient id="ringFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.ring}" stop-opacity=".05"/><stop offset=".5" stop-color="${t.ring}" stop-opacity=".65"/><stop offset="1" stop-color="${t.ring}" stop-opacity=".05"/></linearGradient>
-  <radialGradient id="planetShade" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="${t.planetLight}" stop-opacity=".85"/><stop offset=".4" stop-color="${t.planetLight}" stop-opacity=".12"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></radialGradient>
+  <linearGradient id="plTerm" x1=".15" y1=".1" x2=".95" y2=".95"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#000" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient>
+  <radialGradient id="plSpec"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+  <filter id="soft4" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
+  ${orbit.defs}
   <radialGradient id="floorGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${t.glow}" stop-opacity="${t.dark ? 0.25 : 0.18}"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>
   <clipPath id="farSide"><rect width="${W}" height="${CY}"/></clipPath>
   <clipPath id="nearSide"><rect y="${CY}" width="${W}" height="${H - CY}"/></clipPath>
