@@ -2,7 +2,7 @@
 
 All notable changes to Git3D Universe are documented here.
 
-## [Unreleased]
+## [1.1.0] - 2026-10-08
 
 ### 3D scene redesign
 - Hero layout: the terrain now runs corner to corner on a 1280×760 canvas. Cells are about twice the size, the camera is lower, and bars stand up to about 185px tall.
