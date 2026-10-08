@@ -18,6 +18,10 @@ export const themes = {
     glow: "#38c2bd",
     cellEdge: "#4e91ab",
     planetLight: "#ffffff",
+    nebulaA: "#1f6f8b",
+    nebulaB: "#5b3a8c",
+    grid: "#2d5877",
+    shadow: "#01040a",
     stars: true,
   },
   daylight: {
@@ -37,6 +41,10 @@ export const themes = {
     glow: "#4d9fc6",
     cellEdge: "#b4c8da",
     planetLight: "#ffffff",
+    nebulaA: "#cde4f4",
+    nebulaB: "#e6def6",
+    grid: "#b6c8da",
+    shadow: "#6f8aa6",
     stars: false,
   },
 };
