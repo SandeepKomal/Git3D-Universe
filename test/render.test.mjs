@@ -38,3 +38,33 @@ test("static mode has no animation elements", () => {
 test("unknown theme gives a clear error", () => {
   assert.throws(() => renderSvg(sampleData(), { theme: "nope" }), /Unknown theme/);
 });
+
+test("includes an accessible title and description", () => {
+  const svg = renderSvg(sampleData());
+  assert.match(svg, /<title>Ada Example: \d+ contributions/);
+  assert.match(svg, /<desc>3D contribution terrain for @ada-example/);
+});
+
+test("labels months along the plate and marks the peak day", () => {
+  const svg = renderSvg(sampleData());
+  for (const m of ["Jan", "Jun", "Sep"]) assert.ok(svg.includes(`>${m}</text>`), `month ${m} labelled`);
+  assert.ok(svg.includes("Jun 3 · 29"), "peak callout uses a short date and the count");
+});
+
+test("animated planets are split into far and near layers around the terrain", () => {
+  const svg = renderSvg(sampleData(), { animate: true });
+  const far = svg.indexOf('clip-path="url(#farSide)"');
+  const near = svg.indexOf('clip-path="url(#nearSide)"');
+  const plate = svg.indexOf('fill="url(#plateFill)"');
+  assert.ok(far > 0 && far < plate, "far side is drawn before the terrain");
+  assert.ok(near > plate, "near side is drawn after the terrain");
+});
+
+test("an empty calendar renders without a peak beacon or invalid numbers", () => {
+  const data = sampleData();
+  data.weeks = data.weeks.map((w) => w.map((d) => ({ ...d, count: 0 })));
+  const svg = renderSvg(data);
+  assert.ok(!/NaN|undefined|Infinity/.test(svg));
+  assert.ok(!svg.includes('id="beam"'));
+  assert.ok(svg.includes("No activity yet"));
+});

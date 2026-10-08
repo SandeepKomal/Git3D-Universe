@@ -20,6 +20,10 @@ The repository currently has no declared npm runtime dependencies. The Marketpla
 
 No third-party fonts, icons, templates, or image libraries are intentionally bundled by the current source tree.
 
+## Visual design provenance
+
+The rendered scene is composed entirely by the project's own code in `src/render.mjs`, `src/geometry.mjs`, and `src/themes.mjs`. That includes the projected terrain and plate, the split-depth orbit layers, the peak-day beacon, the floor grid, the nebula backdrop, the stats and legend cards, and the prism legend. All colour values are defined in `src/themes.mjs`. No external images, icon sets, fonts, SVG templates, or generated artwork are embedded. The font stack refers only to fonts already installed on the viewer's system.
+
 ## Contributions
 
 Contributors retain whatever rights they have in their contributions and grant the project the rights necessary to distribute those contributions under the project's applicable license, subject to the project's contribution terms and GitHub's hosting terms.
