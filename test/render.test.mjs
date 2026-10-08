@@ -77,3 +77,13 @@ test("planets are lit spheres, and repos without a language colour get a palette
   assert.ok(svg.includes('fill="url(#plTerm)"') && svg.includes('fill="url(#plSpec)"'), "terminator and specular");
   assert.ok(themes.aurora.planets.some((c) => svg.includes(`stop-color="${c}"`)), "fallback colour from the theme palette");
 });
+
+test("unexpected repo values cannot break the geometry or the render", () => {
+  const data = sampleData();
+  data.repos[0].stars = `1" onload="x`;
+  data.repos[1].name = null;
+  data.repos[2].stars = -5;
+  const svg = renderSvg(data);
+  assert.ok(!/NaN|undefined|Infinity/.test(svg));
+  assert.ok(!svg.includes("onload"));
+});

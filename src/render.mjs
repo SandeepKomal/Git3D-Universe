@@ -298,7 +298,12 @@ function orbits(data, t, animate) {
     return glow + core + pulse;
   };
 
-  const repos = data.repos.slice(0, 6);
+  // Normalise repo fields so unexpected API values cannot break the geometry.
+  const repos = (data.repos || []).slice(0, 6).map((r) => ({
+    name: String(r?.name ?? ""),
+    stars: Math.max(0, Math.floor(Number(r?.stars)) || 0),
+    color: r?.color,
+  }));
   const maxStars = Math.max(1, ...repos.map((r) => r.stars));
   const planet = (repo, i) => {
     const ring = i % RINGS.length;
@@ -308,7 +313,7 @@ function orbits(data, t, animate) {
     const seed = hashName(repo.name);
     const color = HEX.test(repo.color || "") ? repo.color : t.planets[seed % t.planets.length];
     const name = esc(repo.name.length > 18 ? `${repo.name.slice(0, 17)}…` : repo.name);
-    const starsLabel = repo.stars > 0 ? `<tspan fill="${t.mute}" font-weight="500"> ★${Number(repo.stars) | 0}</tspan>` : "";
+    const starsLabel = repo.stars > 0 ? `<tspan fill="${t.mute}" font-weight="500"> ★${repo.stars}</tspan>` : "";
     const duration = 52 + ring * 20 + i * 3;
     const phase = (i / repos.length + ring * 0.17) % 1;
     const begin = r1(-duration * phase);
