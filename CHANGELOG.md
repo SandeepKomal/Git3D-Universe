@@ -25,6 +25,9 @@ All notable changes to Git3D Universe are documented here.
 - New theme tokens: `nebulaA`, `nebulaB`, `grid`, `shadow`.
 - Regenerated the preview SVGs from the renderer.
 
+### Fixed
+- Repo fields are normalised before rendering, so a non-numeric star count or a missing repo name can no longer produce broken geometry or a crash.
+
 ## [1.0.1] - 2026-10-04
 
 ### Dark theme and documentation patch
