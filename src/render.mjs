@@ -29,6 +29,20 @@ function adjust(hex, k) {
   return "#" + out.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
 }
 
+// Linear blend between two #rrggbb colours.
+function mix(a, b, k) {
+  const ca = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+  const cb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  return "#" + ca.map((v, i) => Math.round(v + (cb[i] - v) * k).toString(16).padStart(2, "0")).join("");
+}
+
+// Colour of the floor band at position f (0..1) through the year.
+function floorAt(stops, f) {
+  const x = Math.max(0, Math.min(1, f)) * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(x));
+  return mix(stops[i], stops[i + 1], x - i);
+}
+
 const pts = (list) => list.map((p) => `${r1(p.x)},${r1(p.y)}`).join(" ");
 const poly = (list, fill, extra = "") => `<polygon points="${pts(list)}" fill="${fill}"${extra}/>`;
 
@@ -104,7 +118,7 @@ function terrain(data, stats, t, project) {
     week.forEach((day, j) => {
       const u = u0 + i * CELL + GAP / 2;
       const v = v0 + j * CELL + GAP / 2;
-      cells.push({ u, v, day, depth: project(u, v, 0).depth });
+      cells.push({ u, v, day, week: i, row: j, depth: project(u, v, 0).depth });
     })
   );
   cells.sort((a, b) => a.depth - b.depth);
@@ -114,14 +128,17 @@ function terrain(data, stats, t, project) {
   const heightOf = (count) => 6 + Math.pow(count / stats.max, 0.6) * MAX_BAR;
   let svg = "";
   let peakTop = null;
-  for (const { u, v, day } of cells) {
+  const jitter = lcg(7);
+  for (const { u, v, day, week, row } of cells) {
     const isPeak = stats.peak.date === day.date && day.count > 0;
     const base = isPeak ? t.peak : t.ramp[levelByRank(day.count, thresholds)];
     if (day.count === 0) {
+      // Empty days take the floor band, with a little per-cell variation for texture.
+      const band = floorAt(t.floor, (week + row / 7) / Math.max(1, weekCount - 1));
       svg += poly(
         [project(u, v), project(u + size, v), project(u + size, v + size), project(u, v + size)],
-        base,
-        ` opacity="${t.dark ? ".9" : ".75"}" stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity="${t.dark ? ".7" : ".55"}"`
+        adjust(band, t.dark ? 0.9 + jitter() * 0.2 : 0.97 + jitter() * 0.06),
+        ` opacity="${t.dark ? ".9" : ".95"}" stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity="${t.dark ? ".7" : ".55"}"`
       );
       continue;
     }

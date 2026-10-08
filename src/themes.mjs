@@ -21,6 +21,8 @@ export const themes = {
     nebulaA: "#1f6f8b",
     nebulaB: "#5b3a8c",
     grid: "#2d5877",
+    // Empty days drift through this band across the year.
+    floor: ["#2a2f7a", "#1a5a86", "#147a7c", "#1f6f9a", "#4a3a8e", "#6a3478"],
     shadow: "#01040a",
     stars: true,
   },
@@ -44,6 +46,7 @@ export const themes = {
     nebulaA: "#cde4f4",
     nebulaB: "#e6def6",
     grid: "#b6c8da",
+    floor: ["#c3cdf3", "#bcd8f0", "#b4e3df", "#c1d4f2", "#d2c6f1", "#e8c4de"],
     shadow: "#6f8aa6",
     stars: false,
   },
