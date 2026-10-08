@@ -1,17 +1,20 @@
-import { computeStats, levelOf } from "./stats.mjs";
+import { computeStats, levelByRank } from "./stats.mjs";
 import { makeProjector, prismFaces } from "./geometry.mjs";
 import { themes, FONT_STACK } from "./themes.mjs";
 
+// The terrain is the hero: it runs corner to corner, rising from bottom-left
+// to top-right, and the cards sit in the two empty corners it leaves.
 const W = 1280;
-const H = 640;
-const CX = 805;
-const CY = 372;
-const CELL = 10.5;
-const GAP = 1.5;
-const YAW = -26;
-const PITCH = 58;
-const PLATE_PAD = 9;
-const PLATE_DEPTH = 20; // world units below the ground plane
+const H = 760;
+const CX = 640;
+const CY = 452;
+const CELL = 22;
+const GAP = 3.4;
+const YAW = -24;
+const PITCH = 50;
+const PLATE_PAD = 14;
+const PLATE_DEPTH = 30; // world units below the ground plane
+const MAX_BAR = 290; // world height of the busiest day
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -45,7 +48,7 @@ function lcg(seed) {
 function stars(animate) {
   const rand = lcg(99);
   let out = "";
-  for (let i = 0; i < 110; i++) {
+  for (let i = 0; i < 150; i++) {
     const big = rand() < 0.08;
     const x = r1(rand() * W);
     const y = r1(rand() * H);
@@ -62,14 +65,14 @@ function stars(animate) {
 
 // Soft colour clouds behind the scene so the backdrop has depth instead of a flat fill.
 function nebula() {
-  return `<ellipse cx="1010" cy="170" rx="360" ry="190" fill="url(#nebA)"/><ellipse cx="560" cy="520" rx="420" ry="170" fill="url(#nebB)"/>`;
+  return `<ellipse cx="${W * 0.8}" cy="${H * 0.2}" rx="420" ry="220" fill="url(#nebA)"/><ellipse cx="${W * 0.28}" cy="${H * 0.82}" rx="460" ry="200" fill="url(#nebB)"/>`;
 }
 
 // A ground-plane grid around the plate, faded out radially by a mask.
 function floorGrid(data, project, t) {
-  const halfU = (data.weeks.length * CELL) / 2 + 190;
-  const halfV = (7 * CELL) / 2 + 170;
-  const step = CELL * 3;
+  const halfU = (data.weeks.length * CELL) / 2 + 260;
+  const halfV = (7 * CELL) / 2 + 300;
+  const step = CELL * 2;
   const h = -PLATE_DEPTH;
   let lines = "";
   for (let u = -Math.floor(halfU / step) * step; u <= halfU; u += step) {
@@ -81,6 +84,14 @@ function floorGrid(data, project, t) {
     lines += `M${r1(a.x)},${r1(a.y)}L${r1(b.x)},${r1(b.y)}`;
   }
   return `<path d="${lines}" fill="none" stroke="${t.grid}" stroke-width=".6" opacity="${t.dark ? ".55" : ".5"}" mask="url(#gridMask)"/>`;
+}
+
+// Colour levels follow the spread of active days (quartiles), so one huge day
+// does not flatten every other day into the lowest colour.
+function rankThresholds(weeks) {
+  const counts = weeks.flat().map((d) => d.count).filter((c) => c > 0).sort((a, b) => a - b);
+  const at = (q) => counts[Math.min(counts.length - 1, Math.floor(q * counts.length))] ?? 0;
+  return [at(0.25), at(0.5), at(0.75)];
 }
 
 function terrain(data, stats, t, project) {
@@ -99,23 +110,24 @@ function terrain(data, stats, t, project) {
   cells.sort((a, b) => a.depth - b.depth);
 
   const size = CELL - GAP;
-  const heightOf = (count) => 3 + Math.pow(count / stats.max, 0.8) * 70;
+  const thresholds = rankThresholds(data.weeks);
+  const heightOf = (count) => 6 + Math.pow(count / stats.max, 0.6) * MAX_BAR;
   let svg = "";
   let peakTop = null;
   for (const { u, v, day } of cells) {
     const isPeak = stats.peak.date === day.date && day.count > 0;
-    const base = isPeak ? t.peak : t.ramp[levelOf(day.count, stats.max)];
+    const base = isPeak ? t.peak : t.ramp[levelByRank(day.count, thresholds)];
     if (day.count === 0) {
       svg += poly(
         [project(u, v), project(u + size, v), project(u + size, v + size), project(u, v + size)],
         base,
-        ` opacity="${t.dark ? ".72" : ".6"}" stroke="${t.cellEdge}" stroke-width=".45" stroke-opacity="${t.dark ? ".62" : ".5"}"`
+        ` opacity="${t.dark ? ".9" : ".75"}" stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity="${t.dark ? ".7" : ".55"}"`
       );
       continue;
     }
     const height = heightOf(day.count);
     for (const face of prismFaces(project, u, v, size, height)) {
-      const edge = face.top ? ` stroke="${t.cellEdge}" stroke-width=".45" stroke-opacity=".62"` : "";
+      const edge = face.top ? ` stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity=".62"` : "";
       const glow = face.top && isPeak ? ` filter="url(#glow)"` : "";
       svg += poly(face.pts, adjust(base, face.shade), `${edge}${glow}`);
     }
@@ -156,7 +168,7 @@ function terrain(data, stats, t, project) {
     prev = m;
     if (first && Number(String(week[0].date).slice(8, 10)) > 14) return; // partial leading month
     const a = project(u0 + i * CELL, V1, -PLATE_DEPTH);
-    months += `<line x1="${r1(a.x)}" y1="${r1(a.y + 3)}" x2="${r1(a.x)}" y2="${r1(a.y + 8)}" stroke="${t.mute}" stroke-opacity=".6"/><text x="${r1(a.x)}" y="${r1(a.y + 20)}" text-anchor="middle" font-size="10" letter-spacing=".4" fill="${t.mute}">${MONTHS[m - 1]}</text>`;
+    months += `<line x1="${r1(a.x)}" y1="${r1(a.y + 4)}" x2="${r1(a.x)}" y2="${r1(a.y + 10)}" stroke="${t.mute}" stroke-opacity=".6"/><text x="${r1(a.x)}" y="${r1(a.y + 24)}" text-anchor="middle" font-size="12" letter-spacing=".4" fill="${t.mute}">${MONTHS[m - 1]}</text>`;
   });
 
   return { plate, bars: svg, months, peakTop };
@@ -165,7 +177,7 @@ function terrain(data, stats, t, project) {
 // A light beam rising from the busiest day, with a callout at its tip.
 function beacon(peakTop, stats, t) {
   if (!peakTop) return "";
-  const x = r1(peakTop.x), y0 = r1(peakTop.y - 2), y1 = r1(peakTop.y - 78);
+  const x = r1(peakTop.x), y0 = r1(peakTop.y - 2), y1 = r1(Math.max(44, peakTop.y - 64));
   const label = `${shortDate(stats.peak.date)} · ${stats.max}`;
   const w = 26 + label.length * 6.4;
   return `<g>
@@ -178,8 +190,8 @@ function beacon(peakTop, stats, t) {
 </g>`;
 }
 
-const RINGS = [330, 405, 480];
-const RING_FLATTEN = 0.3;
+const RINGS = [440, 515, 590];
+const RING_FLATTEN = 0.2;
 
 // Planets orbit in a plane that passes behind the calendar on its far side
 // and in front of it on its near side. Rings are split into a back and a front
@@ -196,7 +208,7 @@ function orbits(data, t, animate) {
     const ring = i % RINGS.length;
     const R = RINGS[ring];
     const ry = r1(R * RING_FLATTEN);
-    const radius = 6 + 8 * Math.sqrt(repo.stars / maxStars);
+    const radius = 8 + 9 * Math.sqrt(repo.stars / maxStars);
     const color = HEX.test(repo.color || "") ? repo.color : t.glow;
     const name = esc(repo.name.length > 18 ? `${repo.name.slice(0, 17)}…` : repo.name);
     const starsLabel = repo.stars > 0 ? `<tspan fill="${t.mute}" font-weight="500"> ★${Number(repo.stars) | 0}</tspan>` : "";
@@ -259,16 +271,17 @@ function orbits(data, t, animate) {
   };
 }
 
+// Top-left card: identity, four headline numbers in a row, and a sparkline.
 function panel(data, stats, t) {
-  const x = 40, y = 44, w = 300, h = 322;
-  const stat = (sx, sy, value, label) =>
-    `<text x="${sx}" y="${sy}" font-size="30" font-weight="700" letter-spacing="-0.5" fill="${t.ink}">${esc(value)}</text>` +
-    `<text x="${sx}" y="${sy + 19}" font-size="12" fill="${t.mute}">${esc(label)}</text>`;
+  const x = 40, y = 36, w = 440, h = 236;
+  const col = (w - 56) / 4;
+  const stat = (i, value, label) =>
+    `<text x="${r1(x + 28 + i * col)}" y="${y + 138}" font-size="26" font-weight="700" letter-spacing="-0.5" fill="${t.ink}">${esc(value)}</text>` +
+    `<text x="${r1(x + 28 + i * col)}" y="${y + 156}" font-size="11.5" fill="${t.mute}">${esc(label)}</text>`;
 
-  // Sparkline of the last 26 weeks, drawn below its caption.
   const series = stats.weekly.slice(-26);
   const top = Math.max(1, ...series);
-  const sx0 = x + 28, sw = w - 56, sy0 = y + h - 26, sh = 34;
+  const sx0 = x + 28, sw = w - 56, sy0 = y + h - 18, sh = 30;
   const step = sw / Math.max(1, series.length - 1);
   const line = series.map((v, i) => `${r1(sx0 + i * step)},${r1(sy0 - (v / top) * sh)}`);
   const area = `${sx0},${sy0} ${line.join(" ")} ${r1(sx0 + sw)},${sy0}`;
@@ -279,52 +292,54 @@ function panel(data, stats, t) {
   <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="url(#glassFill)" stroke="url(#glassEdge)"/>
   <rect x="${x + 28}" y="${y + 26}" width="18" height="3" rx="1.5" fill="${t.glow}"/>
   <text x="${x + 52}" y="${y + 31}" font-size="9.5" font-weight="700" letter-spacing="1.6" fill="${t.glow}">CONTRIBUTION OBSERVATORY</text>
-  <text x="${x + 28}" y="${y + 62}" font-size="22" font-weight="700" letter-spacing="-0.3" fill="${t.ink}">${esc(data.name)}</text>
+  <text x="${x + w - 28}" y="${y + 31}" text-anchor="end" font-size="10.5" fill="${t.mute}" opacity=".8">Updated ${esc(data.generatedAt)}</text>
+  <text x="${x + 28}" y="${y + 62}" font-size="24" font-weight="700" letter-spacing="-0.3" fill="${t.ink}">${esc(data.name)}</text>
   <text x="${x + 28}" y="${y + 82}" font-size="13" fill="${t.mute}">@${esc(data.login)} · last 12 months</text>
   <line x1="${x + 28}" x2="${x + w - 28}" y1="${y + 100}" y2="${y + 100}" stroke="${t.rule}"/>
-  ${stat(x + 28, y + 140, stats.total.toLocaleString("en-US"), "contributions")}
-  ${stat(x + 170, y + 140, `${stats.activeDays}`, "active days")}
-  ${stat(x + 28, y + 202, `${stats.current} d`, "current streak")}
-  ${stat(x + 170, y + 202, `${stats.longest} d`, "longest streak")}
-  <text x="${x + 28}" y="${y + 250}" font-size="11" fill="${t.mute}">Weekly activity · last 26 weeks</text>
+  ${stat(0, stats.total.toLocaleString("en-US"), "contributions")}
+  ${stat(1, `${stats.activeDays}`, "active days")}
+  ${stat(2, `${stats.current} d`, "current streak")}
+  ${stat(3, `${stats.longest} d`, "longest streak")}
+  <text x="${x + 28}" y="${y + 184}" font-size="11" fill="${t.mute}">Weekly activity · last 26 weeks</text>
   <polygon points="${area}" fill="url(#sparkFill)"/>
   <polyline points="${line.join(" ")}" fill="none" stroke="${t.glow}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
   <circle cx="${lx}" cy="${ly}" r="3.2" fill="${t.glow}" stroke="${t.bgOuter}" stroke-width="1.5"/>
 </g>`;
 }
 
-// Legend card: the intensity ramp drawn as tiny prisms that echo the terrain.
+// Bottom-right card: the intensity ramp drawn as tiny prisms that echo the terrain, and the peak day.
 function legend(stats, t) {
-  const x = 40, y = 384, w = 300, h = 120;
+  const w = 340, h = 128, x = W - 40 - w, y = H - 28 - h;
   let ramp = "";
   t.ramp.forEach((color, i) => {
-    const p = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: x + 40 + i * 25, cy: y + 66 });
-    const size = 11;
+    const p = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: x + 42 + i * 26, cy: y + 72 });
+    const size = 12;
     if (i === 0) {
       ramp += poly([p(-size / 2, -size / 2), p(size / 2, -size / 2), p(size / 2, size / 2), p(-size / 2, size / 2)], color, ` stroke="${t.cellEdge}" stroke-width=".6"`);
       return;
     }
-    for (const face of prismFaces(p, -size / 2, -size / 2, size, i * 8)) {
+    for (const face of prismFaces(p, -size / 2, -size / 2, size, i * 9)) {
       ramp += poly(face.pts, adjust(color, face.shade), face.top ? ` stroke="${t.cellEdge}" stroke-width=".45" stroke-opacity=".62"` : "");
     }
   });
 
+  const px = x + 196;
   const peak = stats.peak.date
-    ? `<text x="${x + 186}" y="${y + 64}" font-size="18" font-weight="700" fill="${t.ink}">${esc(shortDate(stats.peak.date))}</text>
-  <text x="${x + 186}" y="${y + 82}" font-size="11" fill="${t.mute}">${stats.max} contributions</text>`
-    : `<text x="${x + 186}" y="${y + 64}" font-size="12" fill="${t.mute}">No activity yet</text>`;
+    ? `<text x="${px}" y="${y + 70}" font-size="20" font-weight="700" fill="${t.ink}">${esc(shortDate(stats.peak.date))}</text>
+  <text x="${px}" y="${y + 88}" font-size="11" fill="${t.mute}">${stats.max} contributions</text>`
+    : `<text x="${px}" y="${y + 70}" font-size="12" fill="${t.mute}">No activity yet</text>`;
 
   return `<g>
   <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="url(#glassFill)" stroke="url(#glassEdge)"/>
   <text x="${x + 28}" y="${y + 28}" font-size="11" fill="${t.mute}">Daily intensity</text>
   ${ramp}
-  <text x="${x + 28}" y="${y + 92}" font-size="10" fill="${t.mute}" opacity=".8">less</text>
-  <text x="${x + 152}" y="${y + 92}" font-size="10" fill="${t.mute}" opacity=".8" text-anchor="end">more</text>
-  <line x1="${x + 170}" x2="${x + 170}" y1="${y + 20}" y2="${y + 90}" stroke="${t.rule}"/>
-  <circle cx="${x + 190}" cy="${y + 24}" r="4" fill="${t.peak}" filter="url(#glow)"/>
-  <text x="${x + 200}" y="${y + 28}" font-size="11" fill="${t.mute}">Peak day</text>
+  <text x="${x + 28}" y="${y + 96}" font-size="10" fill="${t.mute}" opacity=".8">less</text>
+  <text x="${x + 162}" y="${y + 96}" font-size="10" fill="${t.mute}" opacity=".8" text-anchor="end">more</text>
+  <line x1="${x + 178}" x2="${x + 178}" y1="${y + 18}" y2="${y + 96}" stroke="${t.rule}"/>
+  <circle cx="${px + 4}" cy="${y + 24}" r="4" fill="${t.peak}" filter="url(#glow)"/>
+  <text x="${px + 14}" y="${y + 28}" font-size="11" fill="${t.mute}">Peak day</text>
   ${peak}
-  <text x="${x + 28}" y="${y + h - 10}" font-size="10" fill="${t.mute}" opacity=".8">Planets: top repositories · size by stars</text>
+  <text x="${x + 28}" y="${y + h - 12}" font-size="10" fill="${t.mute}" opacity=".8">Planets: top repositories · size by stars</text>
 </g>`;
 }
 
@@ -349,7 +364,7 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   <radialGradient id="bg" cx="62%" cy="58%" r="85%"><stop offset="0" stop-color="${t.bgInner}"/><stop offset=".55" stop-color="${t.bgMid}"/><stop offset="1" stop-color="${t.bgOuter}"/></radialGradient>
   <radialGradient id="nebA"><stop offset="0" stop-color="${t.nebulaA}" stop-opacity="${t.dark ? 0.28 : 0.6}"/><stop offset="1" stop-color="${t.nebulaA}" stop-opacity="0"/></radialGradient>
   <radialGradient id="nebB"><stop offset="0" stop-color="${t.nebulaB}" stop-opacity="${t.dark ? 0.22 : 0.55}"/><stop offset="1" stop-color="${t.nebulaB}" stop-opacity="0"/></radialGradient>
-  <radialGradient id="gridFade" cx="63%" cy="64%" r="42%"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+  <radialGradient id="gridFade" cx="50%" cy="58%" r="52%"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <mask id="gridMask"><rect width="${W}" height="${H}" fill="url(#gridFade)"/></mask>
   <linearGradient id="glassFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${t.dark ? 0.09 : 0.85}"/><stop offset="1" stop-color="#fff" stop-opacity="${t.dark ? 0.03 : 0.45}"/></linearGradient>
   <linearGradient id="glassEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.dark ? "#fff" : t.plateEdge}" stop-opacity=".35"/><stop offset="1" stop-color="${t.ring}" stop-opacity=".35"/></linearGradient>
@@ -368,7 +383,7 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
 ${nebula()}
 ${t.stars ? stars(animate) : ""}
 ${floorGrid(data, project, t)}
-<ellipse cx="${CX}" cy="${CY + 30}" rx="520" ry="190" fill="url(#floorGlow)"/>
+<ellipse cx="${CX}" cy="${CY}" rx="660" ry="280" fill="url(#floorGlow)"/>
 ${orbit.back}
 ${plate}
 ${bars}
@@ -378,7 +393,6 @@ ${orbit.front}
 ${orbit.labels}
 ${panel(data, stats, t)}
 ${legend(stats, t)}
-<text x="${W - 40}" y="${H - 28}" text-anchor="end" font-size="11" fill="${t.mute}" opacity=".75">Updated ${esc(data.generatedAt)}</text>
 </svg>
 `;
 }

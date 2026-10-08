@@ -5,6 +5,10 @@ All notable changes to Git3D Universe are documented here.
 ## [Unreleased]
 
 ### 3D scene redesign
+- Hero layout: the terrain now runs corner to corner on a 1280×760 canvas. Cells are about twice the size, the camera is lower, and bars stand up to about 185px tall.
+- Colour levels follow the quartiles of active days (new `levelByRank`), so one very busy day no longer pushes every other day into the lowest colour.
+- Cards moved into the corners the terrain leaves empty: identity and stats top-left, intensity and peak bottom-right.
+- Stronger contrast between bar tops and sides.
 - Orbits now have real depth: rings are split into far and near arcs, and planets pass behind the terrain on the far side and in front of it on the near side.
 - Planets scale with distance (larger when near), have a soft atmosphere and rim highlight, and the most-starred repository gets its own ring.
 - Planet labels show star counts, stay above the scene, and dim on the far side instead of being clipped.
