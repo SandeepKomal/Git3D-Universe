@@ -68,3 +68,12 @@ test("an empty calendar renders without a peak beacon or invalid numbers", () =>
   assert.ok(!svg.includes('id="beam"'));
   assert.ok(svg.includes("No activity yet"));
 });
+
+test("planets are lit spheres, and repos without a language colour get a palette colour", () => {
+  const data = sampleData();
+  data.repos[1].color = null;
+  const svg = renderSvg(data, { theme: "aurora" });
+  assert.ok(svg.includes('id="pl0b"') && svg.includes('id="pl0c"'), "per-planet gradient and clip");
+  assert.ok(svg.includes('fill="url(#plTerm)"') && svg.includes('fill="url(#plSpec)"'), "terminator and specular");
+  assert.ok(themes.aurora.planets.some((c) => svg.includes(`stop-color="${c}"`)), "fallback colour from the theme palette");
+});
