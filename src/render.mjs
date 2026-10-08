@@ -278,8 +278,25 @@ const RING_FLATTEN = 0.2;
 // animated copies stay in lockstep and the far side is hidden by the terrain.
 function orbits(data, t, animate) {
   const arc = (R, sweep) => `M${CX - R},${CY} A${R},${r1(R * RING_FLATTEN)} 0 0,${sweep} ${CX + R},${CY}`;
-  const ringPath = (R, i, sweep) =>
-    `<path d="${arc(R, sweep)}" fill="none" stroke="url(#ringFade)" stroke-width="${i === 1 ? 1.2 : 0.8}"${i === 2 ? ` stroke-dasharray="2 7"` : ""}${sweep ? ` opacity=".6"` : ""}/>`;
+  // Each orbit is layered: a soft glow, a crisp core line, and a fine bright
+  // line on top. The near half is brighter than the far half, and in animated
+  // mode a pulse of light travels along the near half.
+  const ringPath = (R, i, sweep) => {
+    const d = arc(R, sweep);
+    const near = !sweep;
+    const ry = R * RING_FLATTEN;
+    const half = Math.PI * Math.sqrt((R * R + ry * ry) / 2);
+    const glow = `<path d="${d}" fill="none" stroke="${t.ring}" stroke-width="${near ? 7 : 5}" stroke-opacity="${near ? 0.1 : 0.05}" stroke-linecap="round"/>`;
+    const core = i === 2
+      ? `<path d="${d}" fill="none" stroke="url(#ringFade)" stroke-width="${near ? 2.2 : 1.6}" stroke-dasharray="0.1 9" stroke-linecap="round" opacity="${near ? 1 : 0.55}"/>`
+      : `<path d="${d}" fill="none" stroke="url(#ringFade)" stroke-width="${near ? 1.8 : 1.3}" opacity="${near ? 1 : 0.55}"/>` +
+        `<path d="${d}" fill="none" stroke="${t.ringHi}" stroke-width=".6" stroke-opacity="${near ? 0.55 : 0.25}"/>`;
+    const dur = 9 + i * 3;
+    const pulse = animate && near
+      ? `<path d="${d}" fill="none" stroke="${t.ringHi}" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="${r1(half * 0.08)} ${r1(half * 2)}" stroke-opacity=".8"><animate attributeName="stroke-dashoffset" values="${r1(half * 0.1)};${r1(-half * 1.05)}" dur="${dur}s" begin="${-i * 2.7}s" repeatCount="indefinite"/></path>`
+      : "";
+    return glow + core + pulse;
+  };
 
   const repos = data.repos.slice(0, 6);
   const maxStars = Math.max(1, ...repos.map((r) => r.stars));
@@ -445,7 +462,7 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${t.glow}" stop-opacity=".35"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></linearGradient>
   <linearGradient id="plateFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${adjust(t.plateTop, 0.85)}"/><stop offset="1" stop-color="${adjust(t.plateTop, 1.08)}"/></linearGradient>
   <linearGradient id="rimFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.glow}" stop-opacity=".9"/><stop offset=".6" stop-color="${t.glow}" stop-opacity=".45"/><stop offset="1" stop-color="${t.glow}" stop-opacity=".1"/></linearGradient>
-  <linearGradient id="ringFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.ring}" stop-opacity=".05"/><stop offset=".5" stop-color="${t.ring}" stop-opacity=".65"/><stop offset="1" stop-color="${t.ring}" stop-opacity=".05"/></linearGradient>
+  <linearGradient id="ringFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.ring}" stop-opacity=".4"/><stop offset=".5" stop-color="${t.ring}" stop-opacity=".95"/><stop offset="1" stop-color="${t.ring}" stop-opacity=".4"/></linearGradient>
   <linearGradient id="plTerm" x1=".15" y1=".1" x2=".95" y2=".95"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#000" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient>
   <radialGradient id="plSpec"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <filter id="soft4" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>

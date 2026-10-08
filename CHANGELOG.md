@@ -10,6 +10,7 @@ All notable changes to Git3D Universe are documented here.
 - Cards moved into the corners the terrain leaves empty: identity and stats top-left, intensity and peak bottom-right.
 - Stronger contrast between bar tops and sides.
 - Planets are lit 3D spheres: a highlight toward the scene light, tilted cloud bands and a drifting storm spot, a terminator shadow, a specular glint, and an atmosphere rim. The lead planet has a banded ring that casts a shadow on the body. Repos without a language colour get a colour from the new `planets` theme palette.
+- Orbits are much clearer: each one has a soft glow, a crisp core line and a fine highlight line (new `ringHi` theme token). The near half is brighter than the far half, the outer orbit is drawn as round dots, and in animated mode a light pulse travels along each near half.
 - Empty days now take a soft colour band that drifts across the year (new `floor` theme token), so the whole year reads as a solid shape even on quiet profiles.
 - Orbits now have real depth: rings are split into far and near arcs, and planets pass behind the terrain on the far side and in front of it on the near side.
 - Planets scale with distance (larger when near), have a soft atmosphere and rim highlight, and the most-starred repository gets its own ring.
