@@ -53,8 +53,8 @@ test("labels months along the plate and marks the peak day", () => {
 
 test("animated planets are split into far and near layers around the terrain", () => {
   const svg = renderSvg(sampleData(), { animate: true });
-  const far = svg.indexOf('clip-path="url(#farSide)"');
-  const near = svg.indexOf('clip-path="url(#nearSide)"');
+  const far = svg.indexOf('id="farPlanets"');
+  const near = svg.indexOf('id="nearPlanets"');
   const plate = svg.indexOf('fill="url(#plateFill)"');
   assert.ok(far > 0 && far < plate, "far side is drawn before the terrain");
   assert.ok(near > plate, "near side is drawn after the terrain");
@@ -90,14 +90,16 @@ test("unexpected repo values cannot break the geometry or the render", () => {
   assert.ok(!svg.includes("onload"));
 });
 
-test("planet labels share their planet's depth layer instead of floating above the terrain", () => {
+test("planet names only appear in front of the terrain", () => {
   const svg = renderSvg(sampleData(), { animate: true });
   const plate = svg.indexOf('fill="url(#plateFill)"');
-  const near = svg.indexOf('clip-path="url(#nearSide)"');
+  const near = svg.indexOf('id="nearPlanets"');
   const labels = [...svg.matchAll(/>infra-modules</g)].map((m) => m.index);
-  assert.equal(labels.length, 2, "one copy per depth layer");
-  assert.ok(labels[0] < plate, "far copy is drawn before the terrain");
-  assert.ok(labels[1] > near, "near copy is drawn in the near layer");
+  assert.equal(labels.length, 1, "only the near copy carries the name");
+  assert.ok(labels[0] > near && near > plate, "the name is drawn in the near layer, after the terrain");
+  const still = renderSvg(sampleData(), { animate: false });
+  const farLayer = still.slice(still.indexOf('id="farPlanets"'), still.indexOf('fill="url(#plateFill)"'));
+  assert.ok(!farLayer.includes('paint-order="stroke"'), "static far planets have no names");
 });
 
 test("night theme outlines bar tops in a lighter tint of their own colour", () => {
@@ -105,4 +107,12 @@ test("night theme outlines bar tops in a lighter tint of their own colour", () =
   assert.ok(themes.aurora.neonEdges);
   assert.ok(!svg.includes(`stroke="${themes.aurora.cellEdge}" stroke-width=".6" stroke-opacity=".62"`), "bar tops no longer use the flat cell edge");
   assert.match(svg, /stroke-width="1" stroke-opacity="\.95"/);
+});
+
+test("each planet switches depth layers as a whole, so labels are never cut in two", () => {
+  const svg = renderSvg(sampleData(), { animate: true });
+  assert.ok(!svg.includes("clip-path=\"url(#farSide)\"") && !svg.includes("clip-path=\"url(#nearSide)\""), "no half-scene clipping");
+  const n = sampleData().repos.length;
+  assert.equal(svg.split('values="visible;hidden" keyTimes="0;0.5" calcMode="discrete"').length - 1, n, "near copies show on the near half");
+  assert.equal(svg.split('values="hidden;visible" keyTimes="0;0.5" calcMode="discrete"').length - 1, n, "far copies show on the far half");
 });

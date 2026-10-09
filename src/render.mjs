@@ -338,18 +338,24 @@ function orbits(data, t, animate) {
     const place = animate ? "" : ` transform="translate(${r1(CX + R * Math.cos(angle))} ${r1(CY + R * RING_FLATTEN * near)})"`;
     const staticScale = animate ? "" : ` transform="scale(${r1((1 + 0.18 * near) * 100) / 100})"`;
 
-    // Labels live in the planet's own depth layer: when the planet passes behind
-    // the terrain its name is hidden with it, and it dims on the far side.
-    const fade = (n) => r1((n >= 0 ? 1 : 1 + 0.5 * n) * 100) / 100;
-    const fadeAnim = animate
-      ? `<animate attributeName="opacity" values="${scales.map((_, k) => fade(Math.sin((2 * Math.PI * k) / samples))).join(";")}" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
-      : "";
+    // Only the near copy carries the name. A planet behind the terrain is shown
+    // without its label, so names are never cut off by bars or floating over the grid.
+    const label = `<text y="${r1(-radius - 11)}" text-anchor="middle" font-size="12" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round">${name}${starsLabel}</text>`;
     const sphere = planetSphere(i, radius, color, seed, i === 0, animate, t);
     defs.push(sphere.defs);
-    const body = `<g${place}>${motion}<g${staticScale}>${scale}
+    // Each planet is drawn twice: once behind the terrain and once in front.
+    // In animated mode exactly one copy is visible at a time. The near copy
+    // shows for the first half of the orbit (the near side) and the far copy
+    // for the second half, so the planet and its label always switch layers
+    // together and are never cut in two.
+    const swap = (side) =>
+      animate
+        ? `<animate attributeName="visibility" values="${side === "near" ? "visible;hidden" : "hidden;visible"}" keyTimes="0;0.5" calcMode="discrete" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
+        : "";
+    const body = (side) => `<g${place}>${motion}${swap(side)}<g${staticScale}>${scale}
   <ellipse cx="0" cy="${r1(radius + 7)}" rx="${r1(radius * 1.15)}" ry="${r1(radius * 0.28)}" fill="#000" opacity=".3" filter="url(#soft4)"/>
   ${sphere.svg}
-  <text y="${r1(-radius - 11)}" text-anchor="middle" font-size="12" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"${animate ? "" : ` opacity="${fade(near)}"`}>${fadeAnim}${name}${starsLabel}</text>
+  ${side === "near" ? label : ""}
 </g></g>`;
 
     return { body, near };
@@ -357,14 +363,14 @@ function orbits(data, t, animate) {
 
   const defs = [];
   const bodies = repos.map(planet);
-  const layer = (clip, pick) =>
-    animate
-      ? `<g clip-path="url(#${clip})">${bodies.map((b) => b.body).join("\n")}</g>`
-      : bodies.filter(pick).map((b) => b.body).join("\n");
+  const layer = (side, pick) =>
+    `<g id="${side}Planets">` +
+    (animate ? bodies : bodies.filter(pick)).map((b) => b.body(side)).join("\n") +
+    `</g>`;
 
   return {
-    back: RINGS.map((R, i) => ringPath(R, i, 1)).join("") + layer("farSide", (b) => b.near < 0),
-    front: RINGS.map((R, i) => ringPath(R, i, 0)).join("") + layer("nearSide", (b) => b.near >= 0),
+    back: RINGS.map((R, i) => ringPath(R, i, 1)).join("") + layer("far", (b) => b.near < 0),
+    front: RINGS.map((R, i) => ringPath(R, i, 0)).join("") + layer("near", (b) => b.near >= 0),
     defs: defs.join("\n"),
   };
 }
@@ -475,8 +481,6 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   <filter id="soft4" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
   ${orbit.defs}
   <radialGradient id="floorGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${t.glow}" stop-opacity="${t.dark ? 0.25 : 0.18}"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>
-  <clipPath id="farSide"><rect width="${W}" height="${CY}"/></clipPath>
-  <clipPath id="nearSide"><rect y="${CY}" width="${W}" height="${H - CY}"/></clipPath>
   <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   <filter id="soft" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="12"/></filter>
 </defs>
