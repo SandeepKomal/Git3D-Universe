@@ -97,3 +97,10 @@ test("planet labels share their planet's depth layer instead of floating above t
   assert.ok(labels[0] < plate, "far copy is drawn before the terrain");
   assert.ok(labels[1] > near, "near copy is drawn in the near layer");
 });
+
+test("night theme outlines bar tops in a lighter tint of their own colour", () => {
+  const svg = renderSvg(sampleData(), { theme: "aurora", animate: false });
+  assert.ok(themes.aurora.neonEdges);
+  assert.ok(!svg.includes(`stroke="${themes.aurora.cellEdge}" stroke-width=".6" stroke-opacity=".62"`), "bar tops no longer use the flat cell edge");
+  assert.match(svg, /stroke-width="1" stroke-opacity="\.95"/);
+});

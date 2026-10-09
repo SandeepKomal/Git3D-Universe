@@ -4,10 +4,11 @@ All notable changes to Git3D Universe are documented here.
 
 ## [1.2.0] - 2026-10-09
 
-### New pop colour schemes
-- Both themes use a bright pop palette: electric blue, mint green, violet and hot pink, with a glowing lime peak day.
-- `aurora` (night): activity goes blue → green → violet → pink on a dark indigo floor, with pink and blue nebula clouds.
-- `daylight` (day): the same colours, slightly deeper so they stay readable on a white sky.
+### Radium (neon) colour schemes
+- `aurora` (night): fluorescent colours on a near-black sky. Activity goes neon blue `#00b7ff` → neon green `#39ff14` → neon purple `#bc13fe` → neon pink `#ff10f0`, and the peak day glows radium yellow `#e6ff00`.
+- Night mode outlines each bar top in a lighter tint of its own colour, like a neon tube (new `neonEdges` theme flag).
+- `daylight` (day): slightly deeper neons that stay readable on white (`#0091ff` → `#1fc700` → `#a100ff` → `#ff00b8`), with a neon-orange `#ff6a00` peak.
+- Each activity level has its own colour, so busy profiles show an even mix. Planets use the same neon palette.
 
 ### Fixed
 - Planet labels now share their planet's depth layer. When a planet passes behind the terrain, its name is hidden with it instead of floating on top of the grid and bars.

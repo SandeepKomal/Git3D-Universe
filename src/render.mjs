@@ -144,7 +144,11 @@ function terrain(data, stats, t, project) {
     }
     const height = heightOf(day.count);
     for (const face of prismFaces(project, u, v, size, height)) {
-      const edge = face.top ? ` stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity=".62"` : "";
+      const edge = !face.top
+        ? ""
+        : t.neonEdges
+          ? ` stroke="${mix(base, "#ffffff", 0.45)}" stroke-width="1" stroke-opacity=".95"`
+          : ` stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity=".62"`;
       const glow = face.top && isPeak ? ` filter="url(#glow)"` : "";
       svg += poly(face.pts, adjust(base, face.shade), `${edge}${glow}`);
     }
