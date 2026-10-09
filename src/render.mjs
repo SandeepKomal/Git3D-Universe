@@ -127,6 +127,7 @@ function terrain(data, stats, t, project, animate) {
   const heightOf = (count) => 6 + Math.pow(count / stats.max, 0.6) * MAX_BAR;
   let floor = "";
   let svg = "";
+  const barBoxes = [];
   let peakTop = null;
   const jitter = lcg(7);
   for (const { u, v, day, week, row } of cells) {
@@ -143,7 +144,10 @@ function terrain(data, stats, t, project, animate) {
       continue;
     }
     const height = heightOf(day.count);
-    for (const face of prismFaces(project, u, v, size, height)) {
+    const faces = prismFaces(project, u, v, size, height);
+    const xs = faces.flatMap((f) => f.pts.map((q) => q.x)), ys = faces.flatMap((f) => f.pts.map((q) => q.y));
+    barBoxes.push({ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) });
+    for (const face of faces) {
       const edge = !face.top
         ? ""
         : t.neonEdges
@@ -214,7 +218,7 @@ function terrain(data, stats, t, project, animate) {
     });
   }
 
-  return { plate, bars: floor + wave + svg, months, peakTop };
+  return { plate, bars: floor + wave + svg, months, peakTop, blockers: { plate: top, boxes: barBoxes } };
 }
 
 // A light beam rising from the busiest day, with a callout at its tip.
@@ -302,7 +306,45 @@ const RING_FLATTEN = 0.2;
 // and in front of it on its near side. Rings are split into a back and a front
 // arc; each planet is drawn twice, once per layer, clipped to its half, so the
 // animated copies stay in lockstep and the far side is hidden by the terrain.
-function orbits(data, t, animate) {
+// Point on an orbit at a fraction of its length, matching animateMotion's
+// paced timing. The path starts on the left and runs through the near side first.
+function orbitWalker(R, ry) {
+  const steps = 720;
+  const pts = [], len = [0];
+  for (let k = 0; k <= steps; k++) {
+    const th = Math.PI - (2 * Math.PI * k) / steps;
+    pts.push({ x: CX + R * Math.cos(th), y: CY + ry * Math.sin(th) });
+    if (k) len.push(len[k - 1] + Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y));
+  }
+  const total = len[steps];
+  return (f) => {
+    const target = (((f % 1) + 1) % 1) * total;
+    let k = len.findIndex((l) => l >= target);
+    if (k <= 0) return pts[0];
+    const a = (target - len[k - 1]) / (len[k] - len[k - 1] || 1);
+    return { x: pts[k - 1].x + (pts[k].x - pts[k - 1].x) * a, y: pts[k - 1].y + (pts[k].y - pts[k - 1].y) * a };
+  };
+}
+
+// True when an axis-aligned box touches the terrain: the plate's top surface
+// (a convex polygon, tested with separating axes) or any bar's bounding box.
+function hitsTerrain(box, blockers) {
+  if (!blockers) return false;
+  for (const b of blockers.boxes) if (box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0) return true;
+  const poly = blockers.plate;
+  const corners = [{ x: box.x0, y: box.y0 }, { x: box.x1, y: box.y0 }, { x: box.x1, y: box.y1 }, { x: box.x0, y: box.y1 }];
+  const axes = [{ x: 1, y: 0 }, { x: 0, y: 1 }, ...poly.map((p, i) => {
+    const q = poly[(i + 1) % poly.length];
+    return { x: q.y - p.y, y: p.x - q.x };
+  })];
+  return axes.every((ax) => {
+    const proj = (list) => list.map((p) => p.x * ax.x + p.y * ax.y);
+    const a = proj(corners), b = proj(poly);
+    return Math.max(...a) > Math.min(...b) && Math.max(...b) > Math.min(...a);
+  });
+}
+
+function orbits(data, t, animate, blockers) {
   const arc = (R, sweep) => `M${CX - R},${CY} A${R},${r1(R * RING_FLATTEN)} 0 0,${sweep} ${CX + R},${CY}`;
   // Each orbit is layered: a soft glow, a crisp core line, and a fine bright
   // line on top. The near half is brighter than the far half, and in animated
@@ -361,8 +403,16 @@ function orbits(data, t, animate) {
     const place = animate ? "" : ` transform="translate(${r1(CX + R * Math.cos(angle))} ${r1(CY + R * RING_FLATTEN * near)})"`;
     const staticScale = animate ? "" : ` transform="scale(${r1((1 + 0.18 * near) * 100) / 100})"`;
 
-    // Only the near copy carries the name. A planet behind the terrain is shown
-    // without its label, so names are never cut off by bars or floating over the grid.
+    // Names sit in their own top layer. On the near side they always show. On
+    // the far side a name shows only while it would sit in clear sky, and hides
+    // while it would overlap the grid or the bars, so it is never drawn over
+    // the terrain or cut off.
+    const chars = Math.min(repo.name.length, 18) + (repo.stars > 0 ? 2 + String(repo.stars).length : 0);
+    const labelBox = (x, y, sc) => {
+      const w = (chars * 7 + 8) * sc, base = y + (-radius - 11) * sc;
+      return { x0: x - w / 2, x1: x + w / 2, y0: base - 13 * sc, y1: base + 4 * sc };
+    };
+    const shown = (x, y, sc, isNear) => isNear || !hitsTerrain(labelBox(x, y, sc), blockers);
     const label = `<text y="${r1(-radius - 11)}" text-anchor="middle" font-size="12" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round">${name}${starsLabel}</text>`;
     const sphere = planetSphere(i, radius, color, seed, i === 0, animate, t);
     defs.push(sphere.defs);
@@ -378,10 +428,30 @@ function orbits(data, t, animate) {
     const body = (side) => `<g${place}>${motion}${swap(side)}<g${staticScale}>${scale}
   <ellipse cx="0" cy="${r1(radius + 7)}" rx="${r1(radius * 1.15)}" ry="${r1(radius * 0.28)}" fill="#000" opacity=".3" filter="url(#soft4)"/>
   ${sphere.svg}
-  ${side === "near" ? label : ""}
 </g></g>`;
 
-    return { body, near };
+    let labelLayer;
+    if (animate) {
+      const N = 72;
+      const at = orbitWalker(R, R * RING_FLATTEN);
+      const states = Array.from({ length: N }, (_, k) => {
+        const f = k / N, p = at(f);
+        return shown(p.x, p.y, 1 + 0.18 * Math.sin(2 * Math.PI * f), f < 0.5) ? "visible" : "hidden";
+      });
+      const values = [], times = [];
+      states.forEach((v, k) => { if (k === 0 || v !== states[k - 1]) { values.push(v); times.push(r1((k / N) * 1000) / 1000); } });
+      const vis = values.length > 1
+        ? `<animate attributeName="visibility" values="${values.join(";")}" keyTimes="${times.join(";")}" calcMode="discrete" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
+        : "";
+      labelLayer = values.length === 1 && values[0] === "hidden"
+        ? ""
+        : `<g>${motion}${vis}<g>${scale}${label}</g></g>`;
+    } else {
+      const x = CX + R * Math.cos(angle), y = CY + R * RING_FLATTEN * near;
+      labelLayer = shown(x, y, 1 + 0.18 * near, near >= 0) ? `<g${place}><g${staticScale}>${label}</g></g>` : "";
+    }
+
+    return { body, near, labelLayer };
   };
 
   const defs = [];
@@ -394,6 +464,7 @@ function orbits(data, t, animate) {
   return {
     back: RINGS.map((R, i) => ringPath(R, i, 1)).join("") + layer("far", (b) => b.near < 0),
     front: RINGS.map((R, i) => ringPath(R, i, 0)).join("") + layer("near", (b) => b.near >= 0),
+    labels: `<g id="planetLabels">${bodies.map((b) => b.labelLayer).join("\n")}</g>`,
     defs: defs.join("\n"),
   };
 }
@@ -476,8 +547,8 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
 
   const stats = computeStats(data.weeks);
   const project = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: CX, cy: CY });
-  const { plate, bars, months, peakTop } = terrain(data, stats, t, project, animate);
-  const orbit = orbits(data, t, animate);
+  const { plate, bars, months, peakTop, blockers } = terrain(data, stats, t, project, animate);
+  const orbit = orbits(data, t, animate, blockers);
   const label = `${data.name}: ${stats.total} contributions, longest streak ${stats.longest} days`;
   const desc =
     `3D contribution terrain for @${data.login}: ${stats.total} contributions over ${stats.activeDays} active days, ` +
@@ -518,6 +589,7 @@ ${bars}
 ${months}
 ${beacon(peakTop, stats, t)}
 ${orbit.front}
+${orbit.labels}
 ${panel(data, stats, t)}
 ${legend(stats, t)}
 </svg>

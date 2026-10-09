@@ -90,16 +90,23 @@ test("unexpected repo values cannot break the geometry or the render", () => {
   assert.ok(!svg.includes("onload"));
 });
 
-test("planet names only appear in front of the terrain", () => {
-  const svg = renderSvg(sampleData(), { animate: true });
-  const plate = svg.indexOf('fill="url(#plateFill)"');
-  const near = svg.indexOf('id="nearPlanets"');
-  const labels = [...svg.matchAll(/>infra-modules</g)].map((m) => m.index);
-  assert.equal(labels.length, 1, "only the near copy carries the name");
-  assert.ok(labels[0] > near && near > plate, "the name is drawn in the near layer, after the terrain");
-  const still = renderSvg(sampleData(), { animate: false });
-  const farLayer = still.slice(still.indexOf('id="farPlanets"'), still.indexOf('fill="url(#plateFill)"'));
-  assert.ok(!farLayer.includes('paint-order="stroke"'), "static far planets have no names");
+test("planet names show in clear sky on both sides of the orbit, never over the terrain", () => {
+  const data = sampleData();
+  const svg = renderSvg(data, { animate: true });
+  const layer = svg.slice(svg.indexOf('id="planetLabels"'));
+  assert.ok(svg.indexOf('id="planetLabels"') > svg.indexOf('id="nearPlanets"'), "names sit above the planets");
+  assert.equal([...layer.matchAll(/>infra-modules</g)].length, 1, "one name per planet");
+  const anims = [...layer.matchAll(/attributeName="visibility" values="([^"]+)" keyTimes="([^"]+)"/g)];
+  assert.ok(anims.length > 0, "names switch visibility as planets pass the terrain");
+  for (const [, values, times] of anims) {
+    assert.equal(values.split(";")[0], "visible", "every name starts visible on the near side");
+    const v = values.split(";"), k = times.split(";").map(Number);
+    const firstHidden = k[v.indexOf("hidden")];
+    assert.ok(firstHidden === undefined || firstHidden >= 0.5, "names are only hidden on the far side");
+  }
+  const farVisible = anims.some(([, values, times]) => values.split(";").some((v, i) => v === "visible" && Number(times.split(";")[i]) >= 0.5)) ||
+    anims.length < data.repos.length;
+  assert.ok(farVisible, "at least one name stays visible on part of the far side");
 });
 
 test("night theme outlines bar tops in a lighter tint of their own colour", () => {
