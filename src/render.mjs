@@ -128,6 +128,22 @@ function terrain(data, stats, t, project, animate) {
   const heightOf = (count) => 6 + Math.pow(count / stats.max, 0.6) * MAX_BAR;
   let floor = "";
   let svg = "";
+  let ao = "";
+  // Gradient materials, created once per colour and shade, so faces are lit
+  // rather than flat-filled.
+  const mats = new Map();
+  const material = (kind, color, shade) => {
+    const id = `m${kind}${color.slice(1)}${Math.round(shade * 100)}`;
+    if (!mats.has(id)) {
+      mats.set(id, kind === "side"
+        // Sides: brighter at the top, falling off toward the base.
+        ? `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${adjust(color, shade * 1.12)}"/><stop offset="1" stop-color="${adjust(color, shade * (t.dark ? 0.55 : 0.72))}"/></linearGradient>`
+        // Tops: a soft specular sheen from the back-left light.
+        : `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${adjust(color, 1.32)}"/><stop offset=".55" stop-color="${adjust(color, 1.12)}"/><stop offset="1" stop-color="${adjust(color, 0.96)}"/></linearGradient>`);
+    }
+    return `url(#${id})`;
+  };
+  const TILE_H = 3.2;
   const barBoxes = [];
   const tops = new Array(weekCount * 7);
   let peakTop = null;
@@ -139,11 +155,13 @@ function terrain(data, stats, t, project, animate) {
     if (day.count === 0) {
       // Empty days take the floor band, with a little per-cell variation for texture.
       const band = floorAt(t.floor, (week + row / 7) / Math.max(1, weekCount - 1));
-      floor += poly(
-        [project(u, v), project(u + size, v), project(u + size, v + size), project(u, v + size)],
-        t.dark ? adjust(band, 0.9 + jitter() * 0.2) : band,
-        ` opacity="${t.dark ? ".9" : "1"}" stroke="${t.cellEdge}" stroke-width="${t.dark ? ".6" : "1.2"}" stroke-opacity="${t.dark ? ".7" : "1"}"`
-      );
+      // Raised tile: a low prism, so every empty day reads as a physical key
+      // set into the slab rather than a painted square.
+      const tile = t.dark ? adjust(band, 0.9 + jitter() * 0.2) : band;
+      const tf = prismFaces(project, u, v, size, TILE_H);
+      const skirt = tf.filter((f) => !f.top).map((f) => "M" + f.pts.map((q) => `${r1(q.x)},${r1(q.y)}`).join("L") + "Z").join("");
+      floor += `<path d="${skirt}" fill="${adjust(tile, t.dark ? 0.55 : 0.8)}"/>` +
+        poly(tf.find((f) => f.top).pts, tile, ` stroke="${t.cellEdge}" stroke-width="${t.dark ? ".6" : "1"}" stroke-opacity="${t.dark ? ".75" : "1"}"`);
       continue;
     }
     const height = heightOf(day.count);
@@ -157,8 +175,11 @@ function terrain(data, stats, t, project, animate) {
           ? ` stroke="${t.dark ? mix(base, "#ffffff", 0.45) : adjust(base, 0.82)}" stroke-width="1" stroke-opacity=".95"`
           : ` stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity=".62"`;
       const glow = face.top && isPeak ? ` filter="url(#glow)"` : "";
-      svg += poly(face.pts, adjust(base, face.shade), `${edge}${glow}`);
+      svg += poly(face.pts, face.top ? material("top", base, 1) : material("side", base, face.shade), `${edge}${glow}`);
     }
+    // Contact shadow: a soft dark footprint, nudged away from the light.
+    const sh = 2.5;
+    ao += poly([project(u - sh, v + 1), project(u + size + sh * 2, v + 1), project(u + size + sh * 2, v + size + sh * 2), project(u - sh, v + size + sh * 2)], t.shadow);
     tops[week * 7 + row] = project(u + size / 2, v + size / 2, height);
     if (isPeak) peakTop = project(u + size / 2, v + size / 2, height);
   }
@@ -175,7 +196,12 @@ function terrain(data, stats, t, project, animate) {
     { n: [0, -1], i: [1, 0], shade: 1 },
   ]
     .filter((s) => project.facing(s.n[0], s.n[1]) > 0)
-    .map((s) => poly([top[s.i[0]], top[s.i[1]], bottom[s.i[1]], bottom[s.i[0]]], adjust(t.plateSide, s.shade)))
+    .map((s) => {
+      const a = top[s.i[0]], b = top[s.i[1]], c = bottom[s.i[1]];
+      const id = `slab${s.n.join("")}`.replace(/-/g, "m");
+      return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="${r1(Math.min(a.y, b.y))}" x2="0" y2="${r1(Math.max(c.y, bottom[s.i[0]].y))}"><stop offset="0" stop-color="${adjust(t.plateSide, s.shade * (t.dark ? 1.9 : 1.02))}"/><stop offset="1" stop-color="${adjust(t.plateSide, s.shade * (t.dark ? 0.8 : 0.86))}"/></linearGradient>` +
+        poly([a, b, c, bottom[s.i[0]]], `url(#${id})`);
+    })
     .join("");
 
   const shadow = `<polygon points="${pts(bottom.map((p) => ({ x: p.x + 6, y: p.y + 22 })))}" fill="${t.shadow}" opacity="${t.dark ? ".75" : ".2"}" filter="url(#soft)"/>`;
@@ -185,7 +211,16 @@ function terrain(data, stats, t, project, animate) {
   const tube = (list, color) =>
     `<polyline points="${pts(list)}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#neon)"/>` +
     `<polyline points="${pts(list)}" fill="none" stroke="${mix(color, "#ffffff", 0.55)}" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const rim = tube([top[3], top[0], top[1], top[2]], t.edgeBack) + tube([top[0], top[3], top[2]], t.edgeFront);
+  // Every visible edge of the slab is a tube: pink along the back, green along
+  // the front, plus the vertical corners and the bottom edge, so the box reads
+  // as a solid object.
+  const rim =
+    `<g opacity=".7">${tube([bottom[0], bottom[3], bottom[2]], t.edgeFront)}</g>` +
+    tube([top[0], bottom[0]], t.edgeBack) +
+    tube([top[3], bottom[3]], t.edgeFront) +
+    tube([top[2], bottom[2]], t.edgeFront) +
+    tube([top[3], top[0], top[1], top[2]], t.edgeBack) +
+    tube([top[0], top[3], top[2]], t.edgeFront);
   const plate =
     shadow +
     sides +
@@ -221,7 +256,8 @@ function terrain(data, stats, t, project, animate) {
     });
   }
 
-  return { plate, bars: floor + wave + svg, months, peakTop, blockers: { plate: top, boxes: barBoxes }, rim, geo: { U0, U1, V0, V1, depth: PLATE_DEPTH }, tops: tops.filter(Boolean) };
+  const aoLayer = `<g filter="url(#aoBlur)" opacity="${t.dark ? ".55" : ".22"}">${ao}</g>`;
+  return { plate, mats: [...mats.values()].join(""), bars: floor + wave + aoLayer + svg, months, peakTop, blockers: { plate: top, boxes: barBoxes }, rim, geo: { U0, U1, V0, V1, depth: PLATE_DEPTH }, tops: tops.filter(Boolean) };
 }
 
 // A light beam rising from the busiest day, with a callout at its tip.
@@ -550,7 +586,7 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
 
   const stats = computeStats(data.weeks);
   const project = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: CX, cy: CY });
-  const { plate, rim, bars, months, peakTop, geo, tops } = terrain(data, stats, t, project, animate);
+  const { plate, rim, bars, months, peakTop, geo, tops, mats } = terrain(data, stats, t, project, animate);
   const stage = arena({ data, stats, t, project, animate, geo, tops });
   const label = `${data.name}: ${stats.total} contributions, longest streak ${stats.longest} days`;
   const desc =
@@ -576,6 +612,8 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   <radialGradient id="plSpec"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <filter id="soft4" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
   ${stage.defs}
+  ${mats}
+  <filter id="aoBlur" x="-5%" y="-20%" width="110%" height="140%"><feGaussianBlur stdDeviation="2.4"/></filter>
   <radialGradient id="floorGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${t.glow}" stop-opacity="${t.dark ? 0.25 : 0.06}"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>
   <filter id="neon" x="-10%" y="-10%" width="120%" height="120%" filterUnits="objectBoundingBox"><feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
