@@ -8,7 +8,8 @@ All notable changes to Git3D Universe are documented here.
 - `aurora` (night): fluorescent colours on a near-black sky. Activity goes neon blue `#00b7ff` → neon green `#39ff14` → neon purple `#bc13fe` → neon pink `#ff10f0`, and the peak day glows radium yellow `#e6ff00`.
 - Night mode outlines each bar top in a lighter tint of its own colour, like a neon tube (new `neonEdges` theme flag).
 - `daylight` (day): slightly deeper neons that stay readable on white (`#0091ff` → `#1fc700` → `#a100ff` → `#ff00b8`), with a neon-orange `#ff6a00` peak.
-- Each activity level has its own colour, so busy profiles show an even mix. Planets use the same neon palette.
+- Each activity level has its own colour, so busy profiles show an even mix.
+- Planets always use the theme's neon palette, one distinct colour each, instead of GitHub language colours. They have a stronger neon halo at night.
 
 ### Fixed
 - Planet labels now share their planet's depth layer. When a planet passes behind the terrain, its name is hidden with it instead of floating on top of the grid and bars.

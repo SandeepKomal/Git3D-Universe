@@ -21,7 +21,6 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
 const r1 = (n) => Math.round(n * 10) / 10;
-const HEX = /^#[0-9a-fA-F]{6}$/;
 
 function adjust(hex, k) {
   const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -230,7 +229,7 @@ function planetSphere(i, r, color, seed, ringed, animate, t) {
     `<stop offset=".62" stop-color="${color}"/><stop offset=".88" stop-color="${adjust(color, 0.42)}"/>` +
     `<stop offset="1" stop-color="${adjust(color, 0.2)}"/></radialGradient>` +
     `<radialGradient id="${id}a" r="50%"><stop offset=".7" stop-color="${color}" stop-opacity="0"/>` +
-    `<stop offset=".79" stop-color="${adjust(color, 1.3)}" stop-opacity=".38"/><stop offset=".88" stop-color="${color}" stop-opacity=".1"/>` +
+    `<stop offset=".79" stop-color="${adjust(color, 1.3)}" stop-opacity="${t.neonEdges ? 0.7 : 0.38}"/><stop offset=".88" stop-color="${color}" stop-opacity="${t.neonEdges ? 0.28 : 0.1}"/>` +
     `<stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient>` +
     `<clipPath id="${id}c"><circle r="${r1(r)}"/></clipPath>`;
 
@@ -306,7 +305,6 @@ function orbits(data, t, animate) {
   const repos = (data.repos || []).slice(0, 6).map((r) => ({
     name: String(r?.name ?? ""),
     stars: Math.max(0, Math.floor(Number(r?.stars)) || 0),
-    color: r?.color,
   }));
   const maxStars = Math.max(1, ...repos.map((r) => r.stars));
   const planet = (repo, i) => {
@@ -315,7 +313,8 @@ function orbits(data, t, animate) {
     const ry = r1(R * RING_FLATTEN);
     const radius = 14 + 10 * Math.sqrt(repo.stars / maxStars);
     const seed = hashName(repo.name);
-    const color = HEX.test(repo.color || "") ? repo.color : t.planets[seed % t.planets.length];
+    // Planets always use the theme's neon palette, one distinct colour each.
+    const color = t.planets[i % t.planets.length];
     const name = esc(repo.name.length > 18 ? `${repo.name.slice(0, 17)}…` : repo.name);
     const starsLabel = repo.stars > 0 ? `<tspan fill="${t.mute}" font-weight="500"> ★${repo.stars}</tspan>` : "";
     const duration = 52 + ring * 20 + i * 3;

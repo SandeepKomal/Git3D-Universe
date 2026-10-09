@@ -69,13 +69,15 @@ test("an empty calendar renders without a peak beacon or invalid numbers", () =>
   assert.ok(svg.includes("No activity yet"));
 });
 
-test("planets are lit spheres, and repos without a language colour get a palette colour", () => {
+test("planets are lit spheres coloured from the theme's neon palette", () => {
   const data = sampleData();
-  data.repos[1].color = null;
   const svg = renderSvg(data, { theme: "aurora" });
   assert.ok(svg.includes('id="pl0b"') && svg.includes('id="pl0c"'), "per-planet gradient and clip");
   assert.ok(svg.includes('fill="url(#plTerm)"') && svg.includes('fill="url(#plSpec)"'), "terminator and specular");
-  assert.ok(themes.aurora.planets.some((c) => svg.includes(`stop-color="${c}"`)), "fallback colour from the theme palette");
+  data.repos.forEach((r, i) => {
+    assert.ok(svg.includes(`stop-color="${themes.aurora.planets[i % themes.aurora.planets.length]}"`), `planet ${i} uses the palette`);
+    assert.ok(!svg.includes(`stop-color="${r.color}"`), `planet ${i} ignores the language colour`);
+  });
 });
 
 test("unexpected repo values cannot break the geometry or the render", () => {
