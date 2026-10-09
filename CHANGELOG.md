@@ -8,11 +8,14 @@ All notable changes to Git3D Universe are documented here.
 - In animated mode a soft colour wave rolls across the contribution grid. There's one glowing strip per week, fading in and out in turn, so the wave travels along the year. Each pass takes the next colour from the theme's `wave` palette: pink, blue, green, purple.
 - The wave sits between the floor and the bars, so bars stay solid in front. It costs one small polygon per week and is left out of static (`no-motion`) images.
 
-### Premium white day theme
+### Neon-tube edges
+- The plate's edges are glowing neon tubes, each a thick bright core with a soft halo: hot pink along the back and neon green along the front, in both themes.
+- In the day theme the cards also get a glowing pink-to-green neon frame.
+
+### White day theme with vivid neons
 - `daylight` is pure white, with no grey gradient, tinted clouds or haze.
-- It has soft pink and mint borders: the plate has a pink outline and a mint front edge, and the cards have a pink-to-mint gradient border on solid white.
-- Very light pastel neons: ice blue `#9ddcff` → mint `#9cf0b0` → lilac `#d2b0ff` → blush pink `#ffa6e6`, with a soft apricot `#ffb36b` peak day. Bar tops are outlined in a slightly deeper shade of their own colour, so they stay crisp. The planets use matching pastels.
-- New theme tokens `borderA`, `borderB`, `rim`, `wave` and `waveOpacity`. The night theme otherwise looks the same.
+- Vivid neons: cyan `#00c8ff` → neon green `#00e070` → electric purple `#a64dff` → hot pink `#ff2bd6`, with a neon-orange `#ff9100` peak day. Bar tops are outlined in a deeper shade of their own colour. The planets and the wave use the same neons.
+- New theme tokens `borderA`, `borderB`, `edgeBack`, `edgeFront`, `neonFrame`, `wave` and `waveOpacity`. The night theme otherwise looks the same.
 
 ## [1.2.1] - 2026-10-09
 

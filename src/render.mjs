@@ -172,7 +172,12 @@ function terrain(data, stats, t, project, animate) {
 
   const shadow = `<polygon points="${pts(bottom.map((p) => ({ x: p.x + 6, y: p.y + 22 })))}" fill="${t.shadow}" opacity="${t.dark ? ".75" : ".2"}" filter="url(#soft)"/>`;
   // Rim light along the two front edges catches the eye and separates plate from floor.
-  const rim = `<polyline points="${pts([top[0], top[3], top[2]])}" fill="none" stroke="url(#rimFade)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+  // Neon tube edges: a thick glowing core with a soft halo, pink along the
+  // back edges and green along the front edges.
+  const tube = (list, color) =>
+    `<polyline points="${pts(list)}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#neon)"/>` +
+    `<polyline points="${pts(list)}" fill="none" stroke="${mix(color, "#ffffff", 0.55)}" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const rim = tube([top[3], top[0], top[1], top[2]], t.edgeBack) + tube([top[0], top[3], top[2]], t.edgeFront);
   const plate =
     shadow +
     sides +
@@ -411,7 +416,7 @@ function panel(data, stats, t) {
   const [lx, ly] = last.split(",");
 
   return `<g>
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="url(#glassFill)" stroke="url(#glassEdge)" stroke-width="${t.dark ? 1 : 1.6}"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="url(#glassFill)" stroke="url(#glassEdge)" stroke-width="${t.neonFrame ? 2 : 1}"${t.neonFrame ? ` filter="url(#neon)"` : ""}/>
   <rect x="${x + 28}" y="${y + 26}" width="18" height="3" rx="1.5" fill="${t.glow}"/>
   <text x="${x + 52}" y="${y + 31}" font-size="9.5" font-weight="700" letter-spacing="1.6" fill="${t.glow}">CONTRIBUTION OBSERVATORY</text>
   <text x="${x + w - 28}" y="${y + 31}" text-anchor="end" font-size="10.5" fill="${t.mute}" opacity=".8">Updated ${esc(data.generatedAt)}</text>
@@ -452,7 +457,7 @@ function legend(stats, t) {
     : `<text x="${px}" y="${y + 70}" font-size="12" fill="${t.mute}">No activity yet</text>`;
 
   return `<g>
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="url(#glassFill)" stroke="url(#glassEdge)" stroke-width="${t.dark ? 1 : 1.6}"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="url(#glassFill)" stroke="url(#glassEdge)" stroke-width="${t.neonFrame ? 2 : 1}"${t.neonFrame ? ` filter="url(#neon)"` : ""}/>
   <text x="${x + 28}" y="${y + 28}" font-size="11" fill="${t.mute}">Daily intensity</text>
   ${ramp}
   <text x="${x + 28}" y="${y + 96}" font-size="10" fill="${t.mute}" opacity=".8">less</text>
@@ -492,13 +497,13 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   <linearGradient id="glassEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.borderA}" stop-opacity="${t.dark ? 0.35 : 0.9}"/><stop offset="1" stop-color="${t.borderB}" stop-opacity="${t.dark ? 0.35 : 0.9}"/></linearGradient>
   <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${t.glow}" stop-opacity=".35"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></linearGradient>
   <linearGradient id="plateFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.dark ? adjust(t.plateTop, 0.85) : t.plateTop}"/><stop offset="1" stop-color="${t.dark ? adjust(t.plateTop, 1.08) : t.plateTop}"/></linearGradient>
-  <linearGradient id="rimFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.rim}" stop-opacity=".9"/><stop offset=".6" stop-color="${t.rim}" stop-opacity=".45"/><stop offset="1" stop-color="${t.rim}" stop-opacity=".1"/></linearGradient>
   <linearGradient id="ringFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.ring}" stop-opacity=".4"/><stop offset=".5" stop-color="${t.ring}" stop-opacity=".95"/><stop offset="1" stop-color="${t.ring}" stop-opacity=".4"/></linearGradient>
   <linearGradient id="plTerm" x1=".15" y1=".1" x2=".95" y2=".95"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#000" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient>
   <radialGradient id="plSpec"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <filter id="soft4" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
   ${orbit.defs}
   <radialGradient id="floorGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${t.glow}" stop-opacity="${t.dark ? 0.25 : 0.06}"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>
+  <filter id="neon" x="-10%" y="-10%" width="120%" height="120%" filterUnits="objectBoundingBox"><feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   <filter id="soft" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="12"/></filter>
 </defs>

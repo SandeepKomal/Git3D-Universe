@@ -136,3 +136,14 @@ test("a colour wave rolls across the grid in animated mode only", () => {
     assert.ok(!renderSvg(data, { theme, animate: false }).includes(t.wave.join(";")), `${theme}: static mode has no wave`);
   }
 });
+
+test("the plate has glowing pink and green neon-tube edges in both themes", () => {
+  for (const theme of ["aurora", "daylight"]) {
+    const t = themes[theme];
+    const svg = renderSvg(sampleData(), { theme, animate: false });
+    for (const c of [t.edgeBack, t.edgeFront]) {
+      assert.match(svg, new RegExp(`stroke="${c}" stroke-width="2.6"[^>]*filter="url\\(#neon\\)"`), `${theme}: ${c} tube`);
+    }
+  }
+  assert.match(renderSvg(sampleData(), { theme: "daylight" }), /stroke="url\(#glassEdge\)" stroke-width="2" filter="url\(#neon\)"/, "day cards glow");
+});
