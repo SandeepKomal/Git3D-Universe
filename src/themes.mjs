@@ -40,6 +40,9 @@ export const themes = {
     // Glowing neon-tube edges on the plate: pink at the back, green at the front.
     edgeBack: "#ff10f0",
     edgeFront: "#39ff14",
+    // Neon Arena: LED board panels and the streak light-cycle.
+    boardBg: "#05040d",
+    streak: "#00fff0",
     // Bar tops get an outline in a tint of their own colour, like a neon tube.
     neonEdges: true,
     stars: true,
@@ -79,6 +82,8 @@ export const themes = {
     // Glowing neon-tube edges on the plate, and a glowing frame on the cards.
     edgeBack: "#ff10f0",
     edgeFront: "#39ff14",
+    boardBg: "#0d0b1f",
+    streak: "#00c8e0",
     neonFrame: true,
     neonEdges: true,
     stars: false,

@@ -1,6 +1,7 @@
 import { computeStats, levelByRank } from "./stats.mjs";
 import { makeProjector, prismFaces } from "./geometry.mjs";
 import { themes, FONT_STACK } from "./themes.mjs";
+import { arena } from "./arena.mjs";
 
 // The terrain is the hero: it runs corner to corner, rising from bottom-left
 // to top-right, and the cards sit in the two empty corners it leaves.
@@ -13,7 +14,7 @@ const GAP = 3.4;
 const YAW = -24;
 const PITCH = 50;
 const PLATE_PAD = 14;
-const PLATE_DEPTH = 30; // world units below the ground plane
+const PLATE_DEPTH = 40; // world units below the ground plane; the front face is the LED ticker
 const MAX_BAR = 290; // world height of the busiest day
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -128,11 +129,13 @@ function terrain(data, stats, t, project, animate) {
   let floor = "";
   let svg = "";
   const barBoxes = [];
+  const tops = new Array(weekCount * 7);
   let peakTop = null;
   const jitter = lcg(7);
   for (const { u, v, day, week, row } of cells) {
     const isPeak = stats.peak.date === day.date && day.count > 0;
     const base = isPeak ? t.peak : t.ramp[levelByRank(day.count, thresholds)];
+    if (day.count === 0) tops[week * 7 + row] = project(u + size / 2, v + size / 2, 0);
     if (day.count === 0) {
       // Empty days take the floor band, with a little per-cell variation for texture.
       const band = floorAt(t.floor, (week + row / 7) / Math.max(1, weekCount - 1));
@@ -156,6 +159,7 @@ function terrain(data, stats, t, project, animate) {
       const glow = face.top && isPeak ? ` filter="url(#glow)"` : "";
       svg += poly(face.pts, adjust(base, face.shade), `${edge}${glow}`);
     }
+    tops[week * 7 + row] = project(u + size / 2, v + size / 2, height);
     if (isPeak) peakTop = project(u + size / 2, v + size / 2, height);
   }
 
@@ -185,8 +189,7 @@ function terrain(data, stats, t, project, animate) {
   const plate =
     shadow +
     sides +
-    `<polygon points="${pts(top)}" fill="url(#plateFill)" stroke="${t.plateEdge}" stroke-width="1"/>` +
-    rim;
+    `<polygon points="${pts(top)}" fill="url(#plateFill)" stroke="${t.plateEdge}" stroke-width="1"/>` ;
 
   // Month ticks along the front edge, below the slab.
   let months = "";
@@ -218,7 +221,7 @@ function terrain(data, stats, t, project, animate) {
     });
   }
 
-  return { plate, bars: floor + wave + svg, months, peakTop, blockers: { plate: top, boxes: barBoxes } };
+  return { plate, bars: floor + wave + svg, months, peakTop, blockers: { plate: top, boxes: barBoxes }, rim, geo: { U0, U1, V0, V1, depth: PLATE_DEPTH }, tops: tops.filter(Boolean) };
 }
 
 // A light beam rising from the busiest day, with a callout at its tip.
@@ -537,7 +540,7 @@ function legend(stats, t) {
   <circle cx="${px + 4}" cy="${y + 24}" r="4" fill="${t.peak}" filter="url(#glow)"/>
   <text x="${px + 14}" y="${y + 28}" font-size="11" fill="${t.mute}">Peak day</text>
   ${peak}
-  <text x="${x + 28}" y="${y + h - 12}" font-size="10" fill="${t.mute}" opacity=".8">Planets: top repositories · size by stars</text>
+  <text x="${x + 28}" y="${y + h - 12}" font-size="10" fill="${t.mute}" opacity=".8">Ticker: top repos · Light trail: longest streak</text>
 </g>`;
 }
 
@@ -547,8 +550,8 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
 
   const stats = computeStats(data.weeks);
   const project = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: CX, cy: CY });
-  const { plate, bars, months, peakTop, blockers } = terrain(data, stats, t, project, animate);
-  const orbit = orbits(data, t, animate, blockers);
+  const { plate, rim, bars, months, peakTop, geo, tops } = terrain(data, stats, t, project, animate);
+  const stage = arena({ data, stats, t, project, animate, geo, tops });
   const label = `${data.name}: ${stats.total} contributions, longest streak ${stats.longest} days`;
   const desc =
     `3D contribution terrain for @${data.login}: ${stats.total} contributions over ${stats.activeDays} active days, ` +
@@ -572,7 +575,7 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   <linearGradient id="plTerm" x1=".15" y1=".1" x2=".95" y2=".95"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#000" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient>
   <radialGradient id="plSpec"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <filter id="soft4" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
-  ${orbit.defs}
+  ${stage.defs}
   <radialGradient id="floorGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${t.glow}" stop-opacity="${t.dark ? 0.25 : 0.06}"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>
   <filter id="neon" x="-10%" y="-10%" width="120%" height="120%" filterUnits="objectBoundingBox"><feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -583,13 +586,14 @@ ${nebula()}
 ${t.stars ? stars(animate) : ""}
 ${floorGrid(data, project, t)}
 <ellipse cx="${CX}" cy="${CY}" rx="660" ry="280" fill="url(#floorGlow)"/>
-${orbit.back}
 ${plate}
+${stage.front}
+${rim}
+${stage.back}
 ${bars}
+${stage.trail}
 ${months}
 ${beacon(peakTop, stats, t)}
-${orbit.front}
-${orbit.labels}
 ${panel(data, stats, t)}
 ${legend(stats, t)}
 </svg>
