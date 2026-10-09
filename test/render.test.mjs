@@ -124,3 +124,15 @@ test("day theme is clean white with pink and green borders", () => {
   assert.match(svg, new RegExp(`id="glassEdge"[^>]*><stop offset="0" stop-color="${t.borderA}"[^>]*/><stop offset="1" stop-color="${t.borderB}"`));
   assert.match(svg, new RegExp(`fill="url\\(#plateFill\\)" stroke="${t.plateEdge}"`));
 });
+
+test("a colour wave rolls across the grid in animated mode only", () => {
+  const data = sampleData();
+  for (const theme of ["aurora", "daylight"]) {
+    const t = themes[theme];
+    const svg = renderSvg(data, { theme, animate: true });
+    const strips = svg.split(`values="${t.wave.join(";")}" calcMode="discrete"`).length - 1;
+    assert.equal(strips, data.weeks.length, `${theme}: one wave strip per week`);
+    assert.ok(svg.indexOf(`values="${t.wave.join(";")}"`) < svg.indexOf('id="nearPlanets"'), "the wave sits under the near planets");
+    assert.ok(!renderSvg(data, { theme, animate: false }).includes(t.wave.join(";")), `${theme}: static mode has no wave`);
+  }
+});

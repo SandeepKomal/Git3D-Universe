@@ -107,7 +107,7 @@ function rankThresholds(weeks) {
   return [at(0.25), at(0.5), at(0.75)];
 }
 
-function terrain(data, stats, t, project) {
+function terrain(data, stats, t, project, animate) {
   const weekCount = data.weeks.length;
   const u0 = (-weekCount * CELL) / 2;
   const v0 = (-7 * CELL) / 2;
@@ -125,6 +125,7 @@ function terrain(data, stats, t, project) {
   const size = CELL - GAP;
   const thresholds = rankThresholds(data.weeks);
   const heightOf = (count) => 6 + Math.pow(count / stats.max, 0.6) * MAX_BAR;
+  let floor = "";
   let svg = "";
   let peakTop = null;
   const jitter = lcg(7);
@@ -134,7 +135,7 @@ function terrain(data, stats, t, project) {
     if (day.count === 0) {
       // Empty days take the floor band, with a little per-cell variation for texture.
       const band = floorAt(t.floor, (week + row / 7) / Math.max(1, weekCount - 1));
-      svg += poly(
+      floor += poly(
         [project(u, v), project(u + size, v), project(u + size, v + size), project(u, v + size)],
         t.dark ? adjust(band, 0.9 + jitter() * 0.2) : band,
         ` opacity="${t.dark ? ".9" : "1"}" stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity="${t.dark ? ".7" : ".55"}"`
@@ -191,7 +192,24 @@ function terrain(data, stats, t, project) {
     months += `<line x1="${r1(a.x)}" y1="${r1(a.y + 4)}" x2="${r1(a.x)}" y2="${r1(a.y + 10)}" stroke="${t.mute}" stroke-opacity=".6"/><text x="${r1(a.x)}" y="${r1(a.y + 24)}" text-anchor="middle" font-size="12" letter-spacing=".4" fill="${t.mute}">${MONTHS[m - 1]}</text>`;
   });
 
-  return { plate, bars: svg, months, peakTop };
+  // A colour wave rolls across the year: one soft strip per week fades in and
+  // out in turn, between the floor and the bars, so bars stay solid in front.
+  // Each pass takes the next colour in the theme's wave palette.
+  let wave = "";
+  if (animate && t.wave) {
+    const period = 7;
+    const travel = 4;
+    data.weeks.forEach((_, i) => {
+      const a = u0 + i * CELL, b = a + CELL;
+      const begin = r1((i / weekCount) * travel);
+      wave += `<polygon points="${pts([project(a, v0), project(b, v0), project(b, -v0), project(a, -v0)])}" fill="${t.wave[0]}" opacity="0">` +
+        `<animate attributeName="opacity" values="0;${t.waveOpacity};0;0" keyTimes="0;0.07;0.2;1" dur="${period}s" begin="${begin}s" repeatCount="indefinite"/>` +
+        `<animate attributeName="fill" values="${t.wave.join(";")}" calcMode="discrete" dur="${period * t.wave.length}s" begin="${begin}s" repeatCount="indefinite"/>` +
+        `</polygon>`;
+    });
+  }
+
+  return { plate, bars: floor + wave + svg, months, peakTop };
 }
 
 // A light beam rising from the busiest day, with a callout at its tip.
@@ -453,7 +471,7 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
 
   const stats = computeStats(data.weeks);
   const project = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: CX, cy: CY });
-  const { plate, bars, months, peakTop } = terrain(data, stats, t, project);
+  const { plate, bars, months, peakTop } = terrain(data, stats, t, project, animate);
   const orbit = orbits(data, t, animate);
   const label = `${data.name}: ${stats.total} contributions, longest streak ${stats.longest} days`;
   const desc =
