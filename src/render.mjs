@@ -13,6 +13,7 @@ const CELL = 22;
 const GAP = 3.4;
 const YAW = -24;
 const PITCH = 50;
+const CAMERA = 1500; // camera distance for perspective; the near end of the arena looms larger
 const PLATE_PAD = 14;
 const PLATE_DEPTH = 40; // world units below the ground plane; the front face is the LED ticker
 const MAX_BAR = 290; // world height of the busiest day
@@ -144,7 +145,6 @@ function terrain(data, stats, t, project, animate) {
     return `url(#${id})`;
   };
   const TILE_H = 3.2;
-  const barBoxes = [];
   const tops = new Array(weekCount * 7);
   let peakTop = null;
   const jitter = lcg(7);
@@ -166,8 +166,6 @@ function terrain(data, stats, t, project, animate) {
     }
     const height = heightOf(day.count);
     const faces = prismFaces(project, u, v, size, height);
-    const xs = faces.flatMap((f) => f.pts.map((q) => q.x)), ys = faces.flatMap((f) => f.pts.map((q) => q.y));
-    barBoxes.push({ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) });
     for (const face of faces) {
       const edge = !face.top
         ? ""
@@ -195,7 +193,7 @@ function terrain(data, stats, t, project, animate) {
     { n: [1, 0], i: [2, 1], shade: 0.8 },
     { n: [0, -1], i: [1, 0], shade: 1 },
   ]
-    .filter((s) => project.facing(s.n[0], s.n[1]) > 0)
+    .filter((s) => project.faceVisible(s.n[0], s.n[1], s.n[0] > 0 ? U1 : U0, s.n[1] > 0 ? V1 : V0))
     .map((s) => {
       const a = top[s.i[0]], b = top[s.i[1]], c = bottom[s.i[1]];
       const id = `slab${s.n.join("")}`.replace(/-/g, "m");
@@ -257,7 +255,7 @@ function terrain(data, stats, t, project, animate) {
   }
 
   const aoLayer = `<g filter="url(#aoBlur)" opacity="${t.dark ? ".55" : ".22"}">${ao}</g>`;
-  return { plate, mats: [...mats.values()].join(""), bars: floor + wave + aoLayer + svg, months, peakTop, blockers: { plate: top, boxes: barBoxes }, rim, geo: { U0, U1, V0, V1, depth: PLATE_DEPTH }, tops: tops.filter(Boolean) };
+  return { plate, mats: [...mats.values()].join(""), bars: floor + wave + aoLayer + svg, months, peakTop, rim, geo: { U0, U1, V0, V1, depth: PLATE_DEPTH }, tops: tops.filter(Boolean) };
 }
 
 // A light beam rising from the busiest day, with a callout at its tip.
@@ -274,238 +272,6 @@ function beacon(peakTop, stats, t) {
   <circle cx="${x}" cy="${r1(y1 - 12)}" r="3" fill="${t.peak}"/>
   <text x="${r1(x + 8)}" y="${r1(y1 - 8)}" font-size="11" font-weight="600" fill="${t.ink}">${esc(label)}</text>
 </g>`;
-}
-
-function hashName(name) {
-  let h = 2166136261;
-  for (const ch of String(name)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-  return h >>> 0;
-}
-
-// A lit sphere: base gradient with a highlight toward the scene light, tilted
-// cloud bands and a drifting storm spot clipped to the disc, a terminator
-// shadow, a specular glint, an atmosphere rim, and for the lead planet a
-// banded ring that passes behind and in front of the body.
-function planetSphere(i, r, color, seed, ringed, animate, t) {
-  const rand = lcg(seed % 100000 + 1);
-  const id = `pl${i}`;
-  const light = mix(color, "#ffffff", 0.55);
-  const defs = `<radialGradient id="${id}b" cx="50%" cy="50%" r="50%" fx="33%" fy="30%">` +
-    `<stop offset="0" stop-color="${light}"/><stop offset=".28" stop-color="${adjust(color, 1.12)}"/>` +
-    `<stop offset=".62" stop-color="${color}"/><stop offset=".88" stop-color="${adjust(color, 0.42)}"/>` +
-    `<stop offset="1" stop-color="${adjust(color, 0.2)}"/></radialGradient>` +
-    `<radialGradient id="${id}a" r="50%"><stop offset=".7" stop-color="${color}" stop-opacity="0"/>` +
-    `<stop offset=".79" stop-color="${adjust(color, 1.3)}" stop-opacity="${t.neonEdges ? 0.7 : 0.38}"/><stop offset=".88" stop-color="${color}" stop-opacity="${t.neonEdges ? 0.28 : 0.1}"/>` +
-    `<stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient>` +
-    `<clipPath id="${id}c"><circle r="${r1(r)}"/></clipPath>`;
-
-  // Cloud bands: soft tilted stripes, alternating lighter and darker.
-  const tilt = -14 + rand() * 10;
-  let bands = "";
-  const n = 3 + Math.floor(rand() * 3);
-  for (let k = 0; k < n; k++) {
-    const y = r1(-r + ((k + 0.5) * 2 * r) / n + (rand() - 0.5) * r * 0.2);
-    const h = r1(r * (0.1 + rand() * 0.16));
-    const tone = k % 2 ? adjust(color, 0.62) : mix(color, "#ffffff", 0.35);
-    bands += `<ellipse cx="0" cy="${y}" rx="${r1(r * 1.5)}" ry="${h}" fill="${tone}" opacity="${r1(0.18 + rand() * 0.16)}"/>`;
-  }
-  const spotY = r1((rand() - 0.5) * r * 0.9);
-  const spotDur = r1(18 + rand() * 14);
-  const spot = `<ellipse cx="${r1((rand() - 0.5) * r)}" cy="${spotY}" rx="${r1(r * 0.26)}" ry="${r1(r * 0.12)}" fill="${adjust(color, 0.55)}" opacity=".45">` +
-    (animate ? `<animate attributeName="cx" values="${r1(-r * 1.4)};${r1(r * 1.4)}" dur="${spotDur}s" begin="${r1(-rand() * spotDur)}s" repeatCount="indefinite"/>` : "") +
-    `</ellipse>`;
-
-  const ringArc = (rx, ry, sweep, width, op, tone) =>
-    `<path d="M${r1(-rx)},0 A${r1(rx)},${r1(ry)} 0 0,${sweep} ${r1(rx)},0" fill="none" stroke="${tone}" stroke-opacity="${op}" stroke-width="${width}"/>`;
-  const ringSet = (sweep, k) =>
-    `<g transform="rotate(-18)">` +
-    ringArc(r * 1.55, r * 0.36, sweep, r1(r * 0.16), r1(0.55 * k), mix(color, "#ffffff", 0.4)) +
-    ringArc(r * 1.85, r * 0.43, sweep, r1(r * 0.2), r1(0.75 * k), adjust(color, 1.2)) +
-    ringArc(r * 2.15, r * 0.5, sweep, r1(r * 0.08), r1(0.45 * k), mix(color, "#ffffff", 0.6)) +
-    `</g>`;
-
-  const svg =
-    `<circle r="${r1(r * 1.28)}" fill="url(#${id}a)"/>` +
-    (ringed ? ringSet(1, 0.75) : "") +
-    `<circle r="${r1(r)}" fill="url(#${id}b)"/>` +
-    `<g clip-path="url(#${id}c)"><g transform="rotate(${r1(tilt)})">${bands}${spot}</g>` +
-    (ringed ? `<ellipse cx="0" cy="${r1(r * 0.18)}" rx="${r1(r * 1.9)}" ry="${r1(r * 0.12)}" fill="#000" opacity=".28" transform="rotate(-18)"/>` : "") +
-    `</g>` +
-    `<circle r="${r1(r)}" fill="url(#plTerm)"/>` +
-    `<ellipse cx="${r1(-r * 0.36)}" cy="${r1(-r * 0.42)}" rx="${r1(r * 0.3)}" ry="${r1(r * 0.17)}" fill="url(#plSpec)" transform="rotate(-38 ${r1(-r * 0.36)} ${r1(-r * 0.42)})"/>` +
-    `<path d="M${r1(r * Math.cos(3.5))},${r1(r * Math.sin(3.5))} A${r1(r)},${r1(r)} 0 0,1 ${r1(r * Math.cos(5.1))},${r1(r * Math.sin(5.1))}" fill="none" stroke="${t.planetLight}" stroke-opacity=".3" stroke-width=".7" stroke-linecap="round"/>` +
-    (ringed ? ringSet(0, 1) : "");
-  return { defs, svg };
-}
-
-const RINGS = [440, 515, 590];
-const RING_FLATTEN = 0.2;
-
-// Planets orbit in a plane that passes behind the calendar on its far side
-// and in front of it on its near side. Rings are split into a back and a front
-// arc; each planet is drawn twice, once per layer, clipped to its half, so the
-// animated copies stay in lockstep and the far side is hidden by the terrain.
-// Point on an orbit at a fraction of its length, matching animateMotion's
-// paced timing. The path starts on the left and runs through the near side first.
-function orbitWalker(R, ry) {
-  const steps = 720;
-  const pts = [], len = [0];
-  for (let k = 0; k <= steps; k++) {
-    const th = Math.PI - (2 * Math.PI * k) / steps;
-    pts.push({ x: CX + R * Math.cos(th), y: CY + ry * Math.sin(th) });
-    if (k) len.push(len[k - 1] + Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y));
-  }
-  const total = len[steps];
-  return (f) => {
-    const target = (((f % 1) + 1) % 1) * total;
-    let k = len.findIndex((l) => l >= target);
-    if (k <= 0) return pts[0];
-    const a = (target - len[k - 1]) / (len[k] - len[k - 1] || 1);
-    return { x: pts[k - 1].x + (pts[k].x - pts[k - 1].x) * a, y: pts[k - 1].y + (pts[k].y - pts[k - 1].y) * a };
-  };
-}
-
-// True when an axis-aligned box touches the terrain: the plate's top surface
-// (a convex polygon, tested with separating axes) or any bar's bounding box.
-function hitsTerrain(box, blockers) {
-  if (!blockers) return false;
-  for (const b of blockers.boxes) if (box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0) return true;
-  const poly = blockers.plate;
-  const corners = [{ x: box.x0, y: box.y0 }, { x: box.x1, y: box.y0 }, { x: box.x1, y: box.y1 }, { x: box.x0, y: box.y1 }];
-  const axes = [{ x: 1, y: 0 }, { x: 0, y: 1 }, ...poly.map((p, i) => {
-    const q = poly[(i + 1) % poly.length];
-    return { x: q.y - p.y, y: p.x - q.x };
-  })];
-  return axes.every((ax) => {
-    const proj = (list) => list.map((p) => p.x * ax.x + p.y * ax.y);
-    const a = proj(corners), b = proj(poly);
-    return Math.max(...a) > Math.min(...b) && Math.max(...b) > Math.min(...a);
-  });
-}
-
-function orbits(data, t, animate, blockers) {
-  const arc = (R, sweep) => `M${CX - R},${CY} A${R},${r1(R * RING_FLATTEN)} 0 0,${sweep} ${CX + R},${CY}`;
-  // Each orbit is layered: a soft glow, a crisp core line, and a fine bright
-  // line on top. The near half is brighter than the far half, and in animated
-  // mode a pulse of light travels along the near half.
-  const ringPath = (R, i, sweep) => {
-    const d = arc(R, sweep);
-    const near = !sweep;
-    const ry = R * RING_FLATTEN;
-    const half = Math.PI * Math.sqrt((R * R + ry * ry) / 2);
-    const glow = `<path d="${d}" fill="none" stroke="${t.ring}" stroke-width="${near ? 7 : 5}" stroke-opacity="${near ? 0.1 : 0.05}" stroke-linecap="round"/>`;
-    const core = i === 2
-      ? `<path d="${d}" fill="none" stroke="url(#ringFade)" stroke-width="${near ? 2.2 : 1.6}" stroke-dasharray="0.1 9" stroke-linecap="round" opacity="${near ? 1 : 0.55}"/>`
-      : `<path d="${d}" fill="none" stroke="url(#ringFade)" stroke-width="${near ? 1.8 : 1.3}" opacity="${near ? 1 : 0.55}"/>` +
-        `<path d="${d}" fill="none" stroke="${t.ringHi}" stroke-width=".6" stroke-opacity="${near ? 0.55 : 0.25}"/>`;
-    const dur = 9 + i * 3;
-    const pulse = animate && near
-      ? `<path d="${d}" fill="none" stroke="${t.ringHi}" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="${r1(half * 0.08)} ${r1(half * 2)}" stroke-opacity=".8"><animate attributeName="stroke-dashoffset" values="${r1(half * 0.1)};${r1(-half * 1.05)}" dur="${dur}s" begin="${-i * 2.7}s" repeatCount="indefinite"/></path>`
-      : "";
-    return glow + core + pulse;
-  };
-
-  // Normalise repo fields so unexpected API values cannot break the geometry.
-  const repos = (data.repos || []).slice(0, 6).map((r) => ({
-    name: String(r?.name ?? ""),
-    stars: Math.max(0, Math.floor(Number(r?.stars)) || 0),
-  }));
-  const maxStars = Math.max(1, ...repos.map((r) => r.stars));
-  const planet = (repo, i) => {
-    const ring = i % RINGS.length;
-    const R = RINGS[ring];
-    const ry = r1(R * RING_FLATTEN);
-    const radius = 14 + 10 * Math.sqrt(repo.stars / maxStars);
-    const seed = hashName(repo.name);
-    // Planets always use the theme's neon palette, one distinct colour each.
-    const color = t.planets[i % t.planets.length];
-    const name = esc(repo.name.length > 18 ? `${repo.name.slice(0, 17)}…` : repo.name);
-    const starsLabel = repo.stars > 0 ? `<tspan fill="${t.mute}" font-weight="500"> ★${repo.stars}</tspan>` : "";
-    const duration = 52 + ring * 20 + i * 3;
-    const phase = (i / repos.length + ring * 0.17) % 1;
-    const begin = r1(-duration * phase);
-
-    // Path starts on the left and runs through the near side first.
-    const path = `M${CX - R},${CY} a${R},${ry} 0 1,0 ${2 * R},0 a${R},${ry} 0 1,0 ${-2 * R},0`;
-    const samples = 12;
-    // Planets swell slightly on the near side and shrink on the far side.
-    const scales = Array.from({ length: samples + 1 }, (_, k) => 1 + 0.18 * Math.sin((2 * Math.PI * k) / samples));
-    const angle = Math.PI - 2 * Math.PI * phase;
-    const near = Math.sin(angle);
-
-    const motion = animate
-      ? `<animateMotion dur="${duration}s" begin="${begin}s" repeatCount="indefinite" path="${path}"/>`
-      : "";
-    const scale = animate
-      ? `<animateTransform attributeName="transform" type="scale" values="${scales.map((s) => r1(s * 100) / 100).join(";")}" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
-      : "";
-    const place = animate ? "" : ` transform="translate(${r1(CX + R * Math.cos(angle))} ${r1(CY + R * RING_FLATTEN * near)})"`;
-    const staticScale = animate ? "" : ` transform="scale(${r1((1 + 0.18 * near) * 100) / 100})"`;
-
-    // Names sit in their own top layer. On the near side they always show. On
-    // the far side a name shows only while it would sit in clear sky, and hides
-    // while it would overlap the grid or the bars, so it is never drawn over
-    // the terrain or cut off.
-    const chars = Math.min(repo.name.length, 18) + (repo.stars > 0 ? 2 + String(repo.stars).length : 0);
-    const labelBox = (x, y, sc) => {
-      const w = (chars * 7 + 8) * sc, base = y + (-radius - 11) * sc;
-      return { x0: x - w / 2, x1: x + w / 2, y0: base - 13 * sc, y1: base + 4 * sc };
-    };
-    const shown = (x, y, sc, isNear) => isNear || !hitsTerrain(labelBox(x, y, sc), blockers);
-    const label = `<text y="${r1(-radius - 11)}" text-anchor="middle" font-size="12" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round">${name}${starsLabel}</text>`;
-    const sphere = planetSphere(i, radius, color, seed, i === 0, animate, t);
-    defs.push(sphere.defs);
-    // Each planet is drawn twice: once behind the terrain and once in front.
-    // In animated mode exactly one copy is visible at a time. The near copy
-    // shows for the first half of the orbit (the near side) and the far copy
-    // for the second half, so the planet and its label always switch layers
-    // together and are never cut in two.
-    const swap = (side) =>
-      animate
-        ? `<animate attributeName="visibility" values="${side === "near" ? "visible;hidden" : "hidden;visible"}" keyTimes="0;0.5" calcMode="discrete" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
-        : "";
-    const body = (side) => `<g${place}>${motion}${swap(side)}<g${staticScale}>${scale}
-  <ellipse cx="0" cy="${r1(radius + 7)}" rx="${r1(radius * 1.15)}" ry="${r1(radius * 0.28)}" fill="#000" opacity=".3" filter="url(#soft4)"/>
-  ${sphere.svg}
-</g></g>`;
-
-    let labelLayer;
-    if (animate) {
-      const N = 72;
-      const at = orbitWalker(R, R * RING_FLATTEN);
-      const states = Array.from({ length: N }, (_, k) => {
-        const f = k / N, p = at(f);
-        return shown(p.x, p.y, 1 + 0.18 * Math.sin(2 * Math.PI * f), f < 0.5) ? "visible" : "hidden";
-      });
-      const values = [], times = [];
-      states.forEach((v, k) => { if (k === 0 || v !== states[k - 1]) { values.push(v); times.push(r1((k / N) * 1000) / 1000); } });
-      const vis = values.length > 1
-        ? `<animate attributeName="visibility" values="${values.join(";")}" keyTimes="${times.join(";")}" calcMode="discrete" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
-        : "";
-      labelLayer = values.length === 1 && values[0] === "hidden"
-        ? ""
-        : `<g>${motion}${vis}<g>${scale}${label}</g></g>`;
-    } else {
-      const x = CX + R * Math.cos(angle), y = CY + R * RING_FLATTEN * near;
-      labelLayer = shown(x, y, 1 + 0.18 * near, near >= 0) ? `<g${place}><g${staticScale}>${label}</g></g>` : "";
-    }
-
-    return { body, near, labelLayer };
-  };
-
-  const defs = [];
-  const bodies = repos.map(planet);
-  const layer = (side, pick) =>
-    `<g id="${side}Planets">` +
-    (animate ? bodies : bodies.filter(pick)).map((b) => b.body(side)).join("\n") +
-    `</g>`;
-
-  return {
-    back: RINGS.map((R, i) => ringPath(R, i, 1)).join("") + layer("far", (b) => b.near < 0),
-    front: RINGS.map((R, i) => ringPath(R, i, 0)).join("") + layer("near", (b) => b.near >= 0),
-    labels: `<g id="planetLabels">${bodies.map((b) => b.labelLayer).join("\n")}</g>`,
-    defs: defs.join("\n"),
-  };
 }
 
 // Top-left card: identity, four headline numbers in a row, and a sparkline.
@@ -585,7 +351,7 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   if (!t) throw new Error(`Unknown theme "${theme}". Available: ${Object.keys(themes).join(", ")}`);
 
   const stats = computeStats(data.weeks);
-  const project = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: CX, cy: CY });
+  const project = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: CX + 22, cy: CY - 18, distance: CAMERA, zoom: 0.9 });
   const { plate, rim, bars, months, peakTop, geo, tops, mats } = terrain(data, stats, t, project, animate);
   const stage = arena({ data, stats, t, project, animate, geo, tops });
   const label = `${data.name}: ${stats.total} contributions, longest streak ${stats.longest} days`;
@@ -607,10 +373,6 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   <linearGradient id="glassEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.borderA}" stop-opacity="${t.dark ? 0.35 : 0.9}"/><stop offset="1" stop-color="${t.borderB}" stop-opacity="${t.dark ? 0.35 : 0.9}"/></linearGradient>
   <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${t.glow}" stop-opacity=".35"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></linearGradient>
   <linearGradient id="plateFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.dark ? adjust(t.plateTop, 0.85) : t.plateTop}"/><stop offset="1" stop-color="${t.dark ? adjust(t.plateTop, 1.08) : t.plateTop}"/></linearGradient>
-  <linearGradient id="ringFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.ring}" stop-opacity=".4"/><stop offset=".5" stop-color="${t.ring}" stop-opacity=".95"/><stop offset="1" stop-color="${t.ring}" stop-opacity=".4"/></linearGradient>
-  <linearGradient id="plTerm" x1=".15" y1=".1" x2=".95" y2=".95"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#000" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient>
-  <radialGradient id="plSpec"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
-  <filter id="soft4" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
   ${stage.defs}
   ${mats}
   <filter id="aoBlur" x="-5%" y="-20%" width="110%" height="140%"><feGaussianBlur stdDeviation="2.4"/></filter>

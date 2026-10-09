@@ -13,18 +13,20 @@ const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-// Matrix that maps a board's local coordinates (x along the board, y down
-// the board) onto the screen. The board lies in the plane v = const, from
-// h = top downward.
-function boardMatrix(project, u0, v, hTop) {
-  const o = project(u0, v, hTop);
-  const ex = project(u0 + 1, v, hTop);
-  const ey = project(u0, v, hTop - 1);
-  return `matrix(${[ex.x - o.x, ex.y - o.y, ey.x - o.x, ey.y - o.y, o.x, o.y].map((n) => Math.round(n * 1e4) / 1e4).join(" ")})`;
+// Affine matrix for one short stretch of a board, from local x0..x0+len along
+// the board and 0..height down it. Under perspective a single matrix can't
+// follow the whole board, so boards are drawn as many short stretches.
+function stretchMatrix(project, u, v, hTop, len, height) {
+  const o = project(u, v, hTop);
+  const ex = project(u + len, v, hTop);
+  const ey = project(u, v, hTop - height);
+  const m = [(ex.x - o.x) / len, (ex.y - o.y) / len, (ey.x - o.x) / height, (ey.y - o.y) / height, o.x, o.y];
+  return `matrix(${m.map((n) => Math.round(n * 1e4) / 1e4).join(" ")})`;
 }
 
 // One scrolling LED board. `items` are [text, colour] pairs; the run repeats
-// so the scroll loops seamlessly.
+// so the scroll loops seamlessly. The text is defined once and placed into
+// each stretch with <use>, so splitting the board costs almost nothing.
 function ledBoard({ id, project, u0, length, v, hTop, height, items, t, animate, speed, direction, fontSize }) {
   const charW = fontSize * 0.62 + 2;
   const run = items.map(([s]) => s).join("").length;
@@ -40,17 +42,24 @@ function ledBoard({ id, project, u0, length, v, hTop, height, items, t, animate,
   const scroll = animate
     ? `<animateTransform attributeName="transform" type="translate" values="${r1(from)} 0;${r1(to)} 0" dur="${dur}s" repeatCount="indefinite"/>`
     : "";
-  const text = (extra) =>
-    `<text y="${baseline}" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="${fontSize}" font-weight="800" letter-spacing="2"${extra}>${tspans}</text>`;
-  return `<g transform="${boardMatrix(project, u0, v, hTop)}">
-  <clipPath id="${id}Clip"><rect width="${r1(length)}" height="${r1(height)}"/></clipPath>
-  <mask id="${id}Dots"><rect width="${r1(length)}" height="${r1(height)}" fill="url(#ledDots)"/></mask>
-  <rect width="${r1(length)}" height="${r1(height)}" fill="${t.boardBg}"/>
-  <g clip-path="url(#${id}Clip)">
-    <g>${scroll}<g filter="url(#ledBloom)" opacity=".75">${text("")}</g><g mask="url(#${id}Dots)">${text("")}</g></g>
-  </g>
-  <rect width="${r1(length)}" height="${r1(height)}" fill="url(#ledGloss)"/>
-</g>`;
+  const text = `<text y="${baseline}" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="${fontSize}" font-weight="800" letter-spacing="2">${tspans}</text>`;
+  const defs = `<mask id="${id}Dots" maskUnits="userSpaceOnUse" x="0" y="0" width="${r1(length)}" height="${r1(height)}"><rect width="${r1(length)}" height="${r1(height)}" fill="url(#ledDots)"/></mask>
+  <g id="${id}Text"><g>${scroll}<g filter="url(#ledBloom)" opacity=".75">${text}</g><g mask="url(#${id}Dots)">${text}</g></g></g>`;
+
+  // Panel: the true projected outline, then the text in short stretches.
+  const corners = [project(u0, v, hTop), project(u0 + length, v, hTop), project(u0 + length, v, hTop - height), project(u0, v, hTop - height)];
+  const outline = corners.map((q) => `${r1(q.x)},${r1(q.y)}`).join(" ");
+  const parts = 16, seg = length / parts;
+  let stretches = "";
+  for (let k = 0; k < parts; k++) {
+    const x0 = k * seg;
+    stretches += `<clipPath id="${id}C${k}"><rect x="${r1(x0 - 0.4)}" width="${r1(seg + 0.8)}" height="${r1(height)}"/></clipPath>` +
+      `<g transform="${stretchMatrix(project, u0 + x0, v, hTop, seg, height)} translate(${r1(-x0)} 0)" clip-path="url(#${id}C${k})"><use href="#${id}Text"/></g>`;
+  }
+  return {
+    defs,
+    svg: `<polygon points="${outline}" fill="${t.boardBg}"/>${stretches}<polygon points="${outline}" fill="url(#ledGloss)"/>`,
+  };
 }
 
 // Smooth curve through points (Catmull-Rom converted to cubic Béziers), so
@@ -72,7 +81,7 @@ function smoothPath(p) {
 function ease(points, k = 2) {
   return points.map((_, i) => {
     const win = points.slice(Math.max(0, i - k), i + k + 1);
-    return { x: win.reduce((s, q) => s + q.x, 0) / win.length, y: Math.min(...win.map((q) => q.y)) };
+    return { x: win.reduce((s, q) => s + q.x, 0) / win.length, y: win.reduce((s, q) => s + q.y, 0) / win.length };
   });
 }
 
@@ -100,7 +109,7 @@ export function arena({ data, stats, t, project, animate, geo, tops }) {
   const frontItems = repos.length
     ? repos.flatMap((r, i) => [
         [" ◆ ", t.mute],
-        [r.name, t.planets[i % t.planets.length]],
+        [r.name, t.accents[i % t.accents.length]],
         [r.stars ? ` ★${r.stars}` : "", t.ink],
       ])
     : [[" ◆ GIT3D UNIVERSE ", t.ink]];
@@ -165,5 +174,5 @@ export function arena({ data, stats, t, project, animate, geo, tops }) {
   <linearGradient id="ledGloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".1"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient>
   <filter id="ledBloom" x="-5%" y="-40%" width="110%" height="180%"><feGaussianBlur stdDeviation="2.2"/></filter>`;
 
-  return { defs, back: back + backFrame, front, trail };
+  return { defs: defs + front.defs + back.defs, back: back.svg + backFrame, front: front.svg, trail };
 }

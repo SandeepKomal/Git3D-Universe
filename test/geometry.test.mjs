@@ -21,3 +21,19 @@ test("a prism shows two sides and a top, never hidden faces", () => {
   assert.equal(faces.filter((f) => f.top).length, 1);
   for (const f of faces) assert.ok(f.pts.every((q) => Number.isFinite(q.x) && Number.isFinite(q.y)));
 });
+
+test("perspective makes nearer points larger and keeps the centre fixed", () => {
+  const p = makeProjector({ yawDeg: -24, pitchDeg: 50, cx: 0, cy: 0, distance: 1500 });
+  const o = makeProjector({ yawDeg: -24, pitchDeg: 50, cx: 0, cy: 0 });
+  assert.equal(p(0, 0, 0).x, 0);
+  const span = (proj, v) => Math.abs(proj(10, v, 0).x - proj(0, v, 0).x);
+  assert.ok(span(p, 300) > span(o, 300), "near side is magnified");
+  assert.ok(span(p, -300) < span(o, -300), "far side is shrunk");
+});
+
+test("face visibility under perspective matches the orthographic rule at the centre", () => {
+  const p = makeProjector({ yawDeg: -24, pitchDeg: 50, cx: 0, cy: 0, distance: 1500 });
+  for (const n of [[0, 1], [1, 0], [-1, 0], [0, -1]]) {
+    assert.equal(p.faceVisible(n[0], n[1], 0, 0), p.facing(n[0], n[1]) > 0, `normal ${n}`);
+  }
+});

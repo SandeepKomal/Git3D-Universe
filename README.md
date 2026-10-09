@@ -4,11 +4,11 @@
   <strong>Turn GitHub activity into a living 3D contribution universe.</strong>
 </p>
 
-Git3D Universe generates a self-contained SVG that visualizes a GitHub contribution calendar as a 3D isometric terrain with repository planets, profile telemetry, and activity statistics. It can be used locally as a Node.js CLI or directly as a reusable GitHub Action.
+Git3D Universe generates a self-contained SVG that visualizes a GitHub contribution calendar as a neon 3D arena in camera perspective: a lit contribution terrain, an LED ticker of your top repositories on the slab, a stadium board of headline stats, and a light-cycle trail along your longest streak. It can be used locally as a Node.js CLI or directly as a reusable GitHub Action.
 
 ## GitHub Marketplace
 
-Git3D Universe is published as a reusable GitHub Action. The stable release is `v1.3.1`.
+Git3D Universe is published as a reusable GitHub Action. The stable release is `v1.4.0`.
 
 Use the reviewed release tag or an immutable commit SHA in consuming workflows rather than tracking `main`.
 
@@ -24,7 +24,7 @@ Create this file in your profile repository:
 
 The workflow refreshes the SVG once per hour, chooses a light or dark theme from your local timezone, validates the generated SVG, and commits it back to the repository.
 
-For production, use the stable release tag `v1.3.1` or an immutable commit SHA.
+For production, use the stable release tag `v1.4.0` or an immutable commit SHA.
 
 ```yaml
 # Copy this file into:
@@ -108,7 +108,7 @@ jobs:
           echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
 
       - name: Generate Git3D Universe
-        uses: SandeepKomal/Git3D-Universe@v1.3.1
+        uses: SandeepKomal/Git3D-Universe@v1.4.0
         with:
           username: ${{ github.repository_owner }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -181,7 +181,7 @@ Do not paste the generated SVG into `README.md`; keep it as the generated file a
 | `github-token` | Yes | — | Token used to query GitHub's GraphQL API |
 | `theme` | No | `aurora` | `aurora` or `daylight` |
 | `output` | No | `profile/git3d-universe.svg` | Output SVG path |
-| `no-motion` | No | `false` | Disable SVG orbit animation |
+| `no-motion` | No | `false` | Disable SVG animation (ticker scroll, streak trail, colour wave) |
 
 ### Permissions and token handling
 

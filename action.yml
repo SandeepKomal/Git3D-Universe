@@ -18,7 +18,7 @@ inputs:
     required: false
     default: profile/git3d-universe.svg
   no-motion:
-    description: Disable SVG orbit animation.
+    description: Disable SVG animation (ticker scroll, streak trail and colour wave).
     required: false
     default: "false"
 

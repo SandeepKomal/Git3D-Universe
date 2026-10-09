@@ -1,7 +1,9 @@
 // Tiny 3D helper: rotate around the vertical axis, tilt toward the viewer,
 // and project to 2D. World axes: u (east), v (south), h (up).
 
-export function makeProjector({ yawDeg, pitchDeg, cx, cy }) {
+// With `distance`, the camera sits that far from the scene centre and points
+// shrink with distance (perspective). Without it the view is orthographic.
+export function makeProjector({ yawDeg, pitchDeg, cx, cy, distance = 0, zoom = 1 }) {
   const yaw = (yawDeg * Math.PI) / 180;
   const pitch = (pitchDeg * Math.PI) / 180;
   const cosYaw = Math.cos(yaw);
@@ -12,11 +14,20 @@ export function makeProjector({ yawDeg, pitchDeg, cx, cy }) {
   const project = (u, v, h = 0) => {
     const x = u * cosYaw - v * sinYaw;
     const depth = u * sinYaw + v * cosYaw; // larger = closer to the viewer
-    return { x: cx + x, y: cy + depth * sinPitch - h * cosPitch, depth };
+    const y = depth * sinPitch - h * cosPitch;
+    const s = (distance ? distance / (distance - (depth * cosPitch + h * sinPitch)) : 1) * zoom;
+    return { x: cx + x * s, y: cy + y * s, depth };
   };
 
   // How much a ground-plane direction (nu, nv) faces the viewer (>0 = visible).
   project.facing = (nu, nv) => nu * sinYaw + nv * cosYaw;
+
+  // Whether a vertical face with outward normal (nu, nv), passing through the
+  // ground point (pu, pv), points toward the camera. Exact under perspective,
+  // where it depends on where the face sits in the scene.
+  const cam = distance ? { u: distance * cosPitch * sinYaw, v: distance * cosPitch * cosYaw } : null;
+  project.faceVisible = (nu, nv, pu, pv) =>
+    cam ? nu * (cam.u - pu) + nv * (cam.v - pv) > 0 : project.facing(nu, nv) > 0;
   return project;
 }
 
@@ -41,7 +52,7 @@ export function prismFaces(project, u, v, size, height) {
 
   const faces = [];
   for (const side of sides) {
-    if (project.facing(side.n[0], side.n[1]) <= 0) continue;
+    if (!project.faceVisible(side.n[0], side.n[1], side.n[0] > 0 ? u1 : u, side.n[1] > 0 ? v1 : v)) continue;
     const lit = Math.max(0, side.n[0] * LIGHT[0] + side.n[1] * LIGHT[1]);
     faces.push({ pts: side.pts, shade: 0.42 + 0.45 * lit });
   }

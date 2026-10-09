@@ -2,6 +2,21 @@
 
 All notable changes to Git3D Universe are documented here.
 
+## [1.4.0] - 2026-10-09
+
+### Neon Arena (replaces the planets)
+- **LED ticker on the slab:** the slab's front face is a dot-matrix LED screen, projected onto the slab in true perspective. It scrolls the top repositories with their stars in the neon accent colours.
+- **Stadium board:** an LED board stands along the back edge and scrolls the headline stats (handle, contributions, active days, longest streak, peak day). The tall bars stand in front of it.
+- **Streak light-cycle:** a neon trail rides over the bar tops across the longest streak, smoothed to follow the skyline, and ends in a "N-DAY STREAK" tag.
+- The planets, orbit rings and planet labels are removed, along with their code and theme tokens (`ring`, `ringHi`, `planetLight`). The `planets` palette is renamed `accents`.
+
+### Real 3D
+- **Perspective camera:** the arena is drawn in camera perspective, with a mild lens, so the near end looms and the far end recedes. Face visibility is worked out from the camera position, so it stays correct across the scene.
+- **Lit materials:** bar sides fall off from bright tops to darker bases, bar tops have a specular sheen, and the slab sides are gradient-lit. Each material gradient is defined once.
+- **Raised tiles:** every empty day is a low 3D tile with its own sides, like a keycap set into the slab.
+- **Contact shadows:** each bar casts a soft shadow onto the tiles.
+- **Neon box:** every visible edge of the slab (top, vertical corners and bottom) is a glowing tube, pink at the back and green at the front. The slab is thicker, so the LED screen is readable.
+
 ## [1.3.1] - 2026-10-09
 
 ### Fixed

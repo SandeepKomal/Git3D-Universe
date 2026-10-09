@@ -51,15 +51,6 @@ test("labels months along the plate and marks the peak day", () => {
   assert.ok(svg.includes("Jun 3 · 29"), "peak callout uses a short date and the count");
 });
 
-test("animated planets are split into far and near layers around the terrain", () => {
-  const svg = renderSvg(sampleData(), { animate: true });
-  const far = svg.indexOf('id="farPlanets"');
-  const near = svg.indexOf('id="nearPlanets"');
-  const plate = svg.indexOf('fill="url(#plateFill)"');
-  assert.ok(far > 0 && far < plate, "far side is drawn before the terrain");
-  assert.ok(near > plate, "near side is drawn after the terrain");
-});
-
 test("an empty calendar renders without a peak beacon or invalid numbers", () => {
   const data = sampleData();
   data.weeks = data.weeks.map((w) => w.map((d) => ({ ...d, count: 0 })));
@@ -67,17 +58,6 @@ test("an empty calendar renders without a peak beacon or invalid numbers", () =>
   assert.ok(!/NaN|undefined|Infinity/.test(svg));
   assert.ok(!svg.includes('id="beam"'));
   assert.ok(svg.includes("No activity yet"));
-});
-
-test("planets are lit spheres coloured from the theme's neon palette", () => {
-  const data = sampleData();
-  const svg = renderSvg(data, { theme: "aurora" });
-  assert.ok(svg.includes('id="pl0b"') && svg.includes('id="pl0c"'), "per-planet gradient and clip");
-  assert.ok(svg.includes('fill="url(#plTerm)"') && svg.includes('fill="url(#plSpec)"'), "terminator and specular");
-  data.repos.forEach((r, i) => {
-    assert.ok(svg.includes(`stop-color="${themes.aurora.planets[i % themes.aurora.planets.length]}"`), `planet ${i} uses the palette`);
-    assert.ok(!svg.includes(`stop-color="${r.color}"`), `planet ${i} ignores the language colour`);
-  });
 });
 
 test("unexpected repo values cannot break the geometry or the render", () => {
@@ -90,38 +70,11 @@ test("unexpected repo values cannot break the geometry or the render", () => {
   assert.ok(!svg.includes("onload"));
 });
 
-test("planet names show in clear sky on both sides of the orbit, never over the terrain", () => {
-  const data = sampleData();
-  const svg = renderSvg(data, { animate: true });
-  const layer = svg.slice(svg.indexOf('id="planetLabels"'));
-  assert.ok(svg.indexOf('id="planetLabels"') > svg.indexOf('id="nearPlanets"'), "names sit above the planets");
-  assert.equal([...layer.matchAll(/>infra-modules</g)].length, 1, "one name per planet");
-  const anims = [...layer.matchAll(/attributeName="visibility" values="([^"]+)" keyTimes="([^"]+)"/g)];
-  assert.ok(anims.length > 0, "names switch visibility as planets pass the terrain");
-  for (const [, values, times] of anims) {
-    assert.equal(values.split(";")[0], "visible", "every name starts visible on the near side");
-    const v = values.split(";"), k = times.split(";").map(Number);
-    const firstHidden = k[v.indexOf("hidden")];
-    assert.ok(firstHidden === undefined || firstHidden >= 0.5, "names are only hidden on the far side");
-  }
-  const farVisible = anims.some(([, values, times]) => values.split(";").some((v, i) => v === "visible" && Number(times.split(";")[i]) >= 0.5)) ||
-    anims.length < data.repos.length;
-  assert.ok(farVisible, "at least one name stays visible on part of the far side");
-});
-
 test("night theme outlines bar tops in a lighter tint of their own colour", () => {
   const svg = renderSvg(sampleData(), { theme: "aurora", animate: false });
   assert.ok(themes.aurora.neonEdges);
   assert.ok(!svg.includes(`stroke="${themes.aurora.cellEdge}" stroke-width=".6" stroke-opacity=".62"`), "bar tops no longer use the flat cell edge");
   assert.match(svg, /stroke-width="1" stroke-opacity="\.95"/);
-});
-
-test("each planet switches depth layers as a whole, so labels are never cut in two", () => {
-  const svg = renderSvg(sampleData(), { animate: true });
-  assert.ok(!svg.includes("clip-path=\"url(#farSide)\"") && !svg.includes("clip-path=\"url(#nearSide)\""), "no half-scene clipping");
-  const n = sampleData().repos.length;
-  assert.equal(svg.split('values="visible;hidden" keyTimes="0;0.5" calcMode="discrete"').length - 1, n, "near copies show on the near half");
-  assert.equal(svg.split('values="hidden;visible" keyTimes="0;0.5" calcMode="discrete"').length - 1, n, "far copies show on the far half");
 });
 
 test("day theme is clean white with pink and green borders", () => {
@@ -139,7 +92,7 @@ test("a colour wave rolls across the grid in animated mode only", () => {
     const svg = renderSvg(data, { theme, animate: true });
     const strips = svg.split(`values="${t.wave.join(";")}" calcMode="discrete"`).length - 1;
     assert.equal(strips, data.weeks.length, `${theme}: one wave strip per week`);
-    assert.ok(svg.indexOf(`values="${t.wave.join(";")}"`) < svg.indexOf('id="nearPlanets"'), "the wave sits under the near planets");
+    assert.ok(svg.indexOf(`values="${t.wave.join(";")}"`) < svg.indexOf(`fill="url(#mside`), "the wave sits under the bars");
     assert.ok(!renderSvg(data, { theme, animate: false }).includes(t.wave.join(";")), `${theme}: static mode has no wave`);
   }
 });
@@ -158,5 +111,48 @@ test("the plate has glowing pink and green neon-tube edges in both themes", () =
 test("day and night themes share one neon palette", () => {
   const { aurora: a, daylight: d } = themes;
   assert.deepEqual(d.ramp.slice(1), a.ramp.slice(1), "activity levels");
-  for (const k of ["peak", "planets", "wave", "edgeBack", "edgeFront", "ring", "glow"]) assert.deepEqual(d[k], a[k], k);
+  for (const k of ["peak", "accents", "wave", "edgeBack", "edgeFront", "glow"]) assert.deepEqual(d[k], a[k], k);
+});
+
+test("the slab's front face is a scrolling LED ticker of top repos, in perspective", () => {
+  const data = sampleData();
+  const svg = renderSvg(data, { animate: true });
+  const ticker = svg.slice(svg.indexOf('id="ledFrontText"'), svg.indexOf('id="ledBackDots"'));
+  for (const r of data.repos) assert.ok(ticker.includes(`>${r.name.toUpperCase()}<`), `${r.name} on the ticker`);
+  assert.match(ticker, /attributeName="transform" type="translate"/, "the ticker scrolls");
+  assert.equal(svg.split('href="#ledFrontText"').length - 1, 16, "placed in 16 perspective-correct stretches");
+  assert.ok(!renderSvg(data, { animate: false }).includes('type="translate" values='), "static images do not scroll");
+});
+
+test("the stadium board shows the headline stats behind the bars", () => {
+  const svg = renderSvg(sampleData(), { animate: false });
+  const board = svg.slice(svg.indexOf('id="ledBackText"'));
+  assert.match(board, /1,126 CONTRIBUTIONS/);
+  assert.match(board, /LONGEST STREAK 10D/);
+  assert.ok(svg.indexOf('href="#ledBackText"') < svg.indexOf('fill="url(#mside'), "board is drawn before the bars");
+});
+
+test("a light-cycle trail rides the longest streak and is tagged with its length", () => {
+  const svg = renderSvg(sampleData(), { animate: true });
+  assert.ok(svg.includes(">10-DAY STREAK<"));
+  assert.match(svg, /attributeName="stroke-dashoffset"/, "the trail draws itself");
+  const empty = sampleData();
+  empty.weeks = empty.weeks.map((w) => w.map((d) => ({ ...d, count: 0 })));
+  assert.ok(!renderSvg(empty).includes("-DAY STREAK"), "no trail without a streak");
+});
+
+test("bars and tiles are lit with gradient materials and cast contact shadows", () => {
+  const svg = renderSvg(sampleData(), { animate: false });
+  assert.match(svg, /<linearGradient id="mside[0-9a-f]{6}\d+"/, "side material");
+  assert.match(svg, /<linearGradient id="mtop[0-9a-f]{6}\d+"/, "top material");
+  assert.match(svg, /filter="url\(#aoBlur\)"/, "contact shadows");
+  assert.ok(!/id="(m(side|top)[^"]+)"[\s\S]*id="\1"/.test(svg), "each material is defined once");
+});
+
+test("handles and repo names on the LED boards are escaped", () => {
+  const data = sampleData();
+  data.login = `x"><script>alert(1)</script>`;
+  data.repos[0].name = `<img src=x onerror=alert(1)>`;
+  const svg = renderSvg(data);
+  assert.ok(!svg.includes("<script") && !svg.includes("<img") && !svg.includes("<IMG"));
 });
