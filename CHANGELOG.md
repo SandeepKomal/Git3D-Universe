@@ -2,6 +2,12 @@
 
 All notable changes to Git3D Universe are documented here.
 
+## [1.2.1] - 2026-10-09
+
+### Fixed
+- Planet names are never cut off. Before, the scene was split into front and back halves along a horizontal line, so a name could straddle the line and have part of it drawn behind the terrain. Now each planet and its name switch between the back and front layers together, as one unit.
+- Names show only while a planet is in front of the terrain. A planet behind the terrain is drawn without its name, rather than with a name partly hidden by the bars.
+
 ## [1.2.0] - 2026-10-09
 
 ### Radium (neon) colour schemes
