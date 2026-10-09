@@ -2,6 +2,22 @@
 
 All notable changes to Git3D Universe are documented here.
 
+## [1.3.0] - 2026-10-09
+
+### Colour wave
+- In animated mode a soft colour wave rolls across the contribution grid. There's one glowing strip per week, fading in and out in turn, so the wave travels along the year. Each pass takes the next colour from the theme's `wave` palette: pink, blue, green, purple.
+- The wave sits between the floor and the bars, so bars stay solid in front. It costs one small polygon per week and is left out of static (`no-motion`) images.
+
+### Neon-tube edges
+- The plate's edges are glowing neon tubes, each a thick bright core with a soft halo: hot pink along the back and neon green along the front, in both themes.
+- In the day theme the cards also get a glowing pink-to-green neon frame.
+
+### White day theme, same neons as night
+- `daylight` is pure white, with no grey gradient, tinted clouds or haze.
+- It uses exactly the same neon palette as `aurora`: neon blue `#00b7ff` → neon green `#39ff14` → neon purple `#bc13fe` → neon pink `#ff10f0`, with a radium-yellow `#e6ff00` peak day. The planets, wave and neon-tube edges match too. Bar tops are outlined in a deeper shade of their own colour, so the neons stay crisp on white.
+- Grid lines between the empty squares are thicker (1.2px), fully opaque and a darker lavender-grey, so the grid stays visible on white.
+- New theme tokens `borderA`, `borderB`, `edgeBack`, `edgeFront`, `neonFrame`, `wave` and `waveOpacity`. A test keeps the two palettes in sync.
+
 ## [1.2.1] - 2026-10-09
 
 ### Fixed

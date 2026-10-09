@@ -107,7 +107,7 @@ function rankThresholds(weeks) {
   return [at(0.25), at(0.5), at(0.75)];
 }
 
-function terrain(data, stats, t, project) {
+function terrain(data, stats, t, project, animate) {
   const weekCount = data.weeks.length;
   const u0 = (-weekCount * CELL) / 2;
   const v0 = (-7 * CELL) / 2;
@@ -125,6 +125,7 @@ function terrain(data, stats, t, project) {
   const size = CELL - GAP;
   const thresholds = rankThresholds(data.weeks);
   const heightOf = (count) => 6 + Math.pow(count / stats.max, 0.6) * MAX_BAR;
+  let floor = "";
   let svg = "";
   let peakTop = null;
   const jitter = lcg(7);
@@ -134,10 +135,10 @@ function terrain(data, stats, t, project) {
     if (day.count === 0) {
       // Empty days take the floor band, with a little per-cell variation for texture.
       const band = floorAt(t.floor, (week + row / 7) / Math.max(1, weekCount - 1));
-      svg += poly(
+      floor += poly(
         [project(u, v), project(u + size, v), project(u + size, v + size), project(u, v + size)],
-        adjust(band, t.dark ? 0.9 + jitter() * 0.2 : 0.97 + jitter() * 0.06),
-        ` opacity="${t.dark ? ".9" : ".95"}" stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity="${t.dark ? ".7" : ".55"}"`
+        t.dark ? adjust(band, 0.9 + jitter() * 0.2) : band,
+        ` opacity="${t.dark ? ".9" : "1"}" stroke="${t.cellEdge}" stroke-width="${t.dark ? ".6" : "1.2"}" stroke-opacity="${t.dark ? ".7" : "1"}"`
       );
       continue;
     }
@@ -146,7 +147,7 @@ function terrain(data, stats, t, project) {
       const edge = !face.top
         ? ""
         : t.neonEdges
-          ? ` stroke="${mix(base, "#ffffff", 0.45)}" stroke-width="1" stroke-opacity=".95"`
+          ? ` stroke="${t.dark ? mix(base, "#ffffff", 0.45) : adjust(base, 0.82)}" stroke-width="1" stroke-opacity=".95"`
           : ` stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity=".62"`;
       const glow = face.top && isPeak ? ` filter="url(#glow)"` : "";
       svg += poly(face.pts, adjust(base, face.shade), `${edge}${glow}`);
@@ -169,9 +170,14 @@ function terrain(data, stats, t, project) {
     .map((s) => poly([top[s.i[0]], top[s.i[1]], bottom[s.i[1]], bottom[s.i[0]]], adjust(t.plateSide, s.shade)))
     .join("");
 
-  const shadow = `<polygon points="${pts(bottom.map((p) => ({ x: p.x + 6, y: p.y + 22 })))}" fill="${t.shadow}" opacity="${t.dark ? ".75" : ".35"}" filter="url(#soft)"/>`;
+  const shadow = `<polygon points="${pts(bottom.map((p) => ({ x: p.x + 6, y: p.y + 22 })))}" fill="${t.shadow}" opacity="${t.dark ? ".75" : ".2"}" filter="url(#soft)"/>`;
   // Rim light along the two front edges catches the eye and separates plate from floor.
-  const rim = `<polyline points="${pts([top[0], top[3], top[2]])}" fill="none" stroke="url(#rimFade)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+  // Neon tube edges: a thick glowing core with a soft halo, pink along the
+  // back edges and green along the front edges.
+  const tube = (list, color) =>
+    `<polyline points="${pts(list)}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#neon)"/>` +
+    `<polyline points="${pts(list)}" fill="none" stroke="${mix(color, "#ffffff", 0.55)}" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const rim = tube([top[3], top[0], top[1], top[2]], t.edgeBack) + tube([top[0], top[3], top[2]], t.edgeFront);
   const plate =
     shadow +
     sides +
@@ -191,7 +197,24 @@ function terrain(data, stats, t, project) {
     months += `<line x1="${r1(a.x)}" y1="${r1(a.y + 4)}" x2="${r1(a.x)}" y2="${r1(a.y + 10)}" stroke="${t.mute}" stroke-opacity=".6"/><text x="${r1(a.x)}" y="${r1(a.y + 24)}" text-anchor="middle" font-size="12" letter-spacing=".4" fill="${t.mute}">${MONTHS[m - 1]}</text>`;
   });
 
-  return { plate, bars: svg, months, peakTop };
+  // A colour wave rolls across the year: one soft strip per week fades in and
+  // out in turn, between the floor and the bars, so bars stay solid in front.
+  // Each pass takes the next colour in the theme's wave palette.
+  let wave = "";
+  if (animate && t.wave) {
+    const period = 7;
+    const travel = 4;
+    data.weeks.forEach((_, i) => {
+      const a = u0 + i * CELL, b = a + CELL;
+      const begin = r1((i / weekCount) * travel);
+      wave += `<polygon points="${pts([project(a, v0), project(b, v0), project(b, -v0), project(a, -v0)])}" fill="${t.wave[0]}" opacity="0">` +
+        `<animate attributeName="opacity" values="0;${t.waveOpacity};0;0" keyTimes="0;0.07;0.2;1" dur="${period}s" begin="${begin}s" repeatCount="indefinite"/>` +
+        `<animate attributeName="fill" values="${t.wave.join(";")}" calcMode="discrete" dur="${period * t.wave.length}s" begin="${begin}s" repeatCount="indefinite"/>` +
+        `</polygon>`;
+    });
+  }
+
+  return { plate, bars: floor + wave + svg, months, peakTop };
 }
 
 // A light beam rising from the busiest day, with a callout at its tip.
@@ -393,7 +416,7 @@ function panel(data, stats, t) {
   const [lx, ly] = last.split(",");
 
   return `<g>
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="url(#glassFill)" stroke="url(#glassEdge)"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="url(#glassFill)" stroke="url(#glassEdge)" stroke-width="${t.neonFrame ? 2 : 1}"${t.neonFrame ? ` filter="url(#neon)"` : ""}/>
   <rect x="${x + 28}" y="${y + 26}" width="18" height="3" rx="1.5" fill="${t.glow}"/>
   <text x="${x + 52}" y="${y + 31}" font-size="9.5" font-weight="700" letter-spacing="1.6" fill="${t.glow}">CONTRIBUTION OBSERVATORY</text>
   <text x="${x + w - 28}" y="${y + 31}" text-anchor="end" font-size="10.5" fill="${t.mute}" opacity=".8">Updated ${esc(data.generatedAt)}</text>
@@ -419,7 +442,7 @@ function legend(stats, t) {
     const p = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: x + 42 + i * 26, cy: y + 72 });
     const size = 12;
     if (i === 0) {
-      ramp += poly([p(-size / 2, -size / 2), p(size / 2, -size / 2), p(size / 2, size / 2), p(-size / 2, size / 2)], color, ` stroke="${t.cellEdge}" stroke-width=".6"`);
+      ramp += poly([p(-size / 2, -size / 2), p(size / 2, -size / 2), p(size / 2, size / 2), p(-size / 2, size / 2)], color, ` stroke="${t.cellEdge}" stroke-width="${t.dark ? ".6" : "1.2"}"`);
       return;
     }
     for (const face of prismFaces(p, -size / 2, -size / 2, size, i * 9)) {
@@ -434,7 +457,7 @@ function legend(stats, t) {
     : `<text x="${px}" y="${y + 70}" font-size="12" fill="${t.mute}">No activity yet</text>`;
 
   return `<g>
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="url(#glassFill)" stroke="url(#glassEdge)"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="url(#glassFill)" stroke="url(#glassEdge)" stroke-width="${t.neonFrame ? 2 : 1}"${t.neonFrame ? ` filter="url(#neon)"` : ""}/>
   <text x="${x + 28}" y="${y + 28}" font-size="11" fill="${t.mute}">Daily intensity</text>
   ${ramp}
   <text x="${x + 28}" y="${y + 96}" font-size="10" fill="${t.mute}" opacity=".8">less</text>
@@ -453,7 +476,7 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
 
   const stats = computeStats(data.weeks);
   const project = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: CX, cy: CY });
-  const { plate, bars, months, peakTop } = terrain(data, stats, t, project);
+  const { plate, bars, months, peakTop } = terrain(data, stats, t, project, animate);
   const orbit = orbits(data, t, animate);
   const label = `${data.name}: ${stats.total} contributions, longest streak ${stats.longest} days`;
   const desc =
@@ -470,17 +493,17 @@ export function renderSvg(data, { theme = "aurora", animate = true } = {}) {
   <radialGradient id="nebB"><stop offset="0" stop-color="${t.nebulaB}" stop-opacity="${t.dark ? 0.22 : 0.55}"/><stop offset="1" stop-color="${t.nebulaB}" stop-opacity="0"/></radialGradient>
   <radialGradient id="gridFade" cx="50%" cy="58%" r="52%"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <mask id="gridMask"><rect width="${W}" height="${H}" fill="url(#gridFade)"/></mask>
-  <linearGradient id="glassFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${t.dark ? 0.09 : 0.85}"/><stop offset="1" stop-color="#fff" stop-opacity="${t.dark ? 0.03 : 0.45}"/></linearGradient>
-  <linearGradient id="glassEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.dark ? "#fff" : t.plateEdge}" stop-opacity=".35"/><stop offset="1" stop-color="${t.ring}" stop-opacity=".35"/></linearGradient>
+  <linearGradient id="glassFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${t.dark ? 0.09 : 1}"/><stop offset="1" stop-color="#fff" stop-opacity="${t.dark ? 0.03 : 0.97}"/></linearGradient>
+  <linearGradient id="glassEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.borderA}" stop-opacity="${t.dark ? 0.35 : 0.9}"/><stop offset="1" stop-color="${t.borderB}" stop-opacity="${t.dark ? 0.35 : 0.9}"/></linearGradient>
   <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${t.glow}" stop-opacity=".35"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></linearGradient>
-  <linearGradient id="plateFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${adjust(t.plateTop, 0.85)}"/><stop offset="1" stop-color="${adjust(t.plateTop, 1.08)}"/></linearGradient>
-  <linearGradient id="rimFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.glow}" stop-opacity=".9"/><stop offset=".6" stop-color="${t.glow}" stop-opacity=".45"/><stop offset="1" stop-color="${t.glow}" stop-opacity=".1"/></linearGradient>
+  <linearGradient id="plateFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${t.dark ? adjust(t.plateTop, 0.85) : t.plateTop}"/><stop offset="1" stop-color="${t.dark ? adjust(t.plateTop, 1.08) : t.plateTop}"/></linearGradient>
   <linearGradient id="ringFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${t.ring}" stop-opacity=".4"/><stop offset=".5" stop-color="${t.ring}" stop-opacity=".95"/><stop offset="1" stop-color="${t.ring}" stop-opacity=".4"/></linearGradient>
   <linearGradient id="plTerm" x1=".15" y1=".1" x2=".95" y2=".95"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#000" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient>
   <radialGradient id="plSpec"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <filter id="soft4" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
   ${orbit.defs}
-  <radialGradient id="floorGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${t.glow}" stop-opacity="${t.dark ? 0.25 : 0.18}"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>
+  <radialGradient id="floorGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${t.glow}" stop-opacity="${t.dark ? 0.25 : 0.06}"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>
+  <filter id="neon" x="-10%" y="-10%" width="120%" height="120%" filterUnits="objectBoundingBox"><feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   <filter id="soft" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="12"/></filter>
 </defs>

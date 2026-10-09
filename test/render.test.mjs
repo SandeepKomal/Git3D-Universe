@@ -116,3 +116,40 @@ test("each planet switches depth layers as a whole, so labels are never cut in t
   assert.equal(svg.split('values="visible;hidden" keyTimes="0;0.5" calcMode="discrete"').length - 1, n, "near copies show on the near half");
   assert.equal(svg.split('values="hidden;visible" keyTimes="0;0.5" calcMode="discrete"').length - 1, n, "far copies show on the far half");
 });
+
+test("day theme is clean white with pink and green borders", () => {
+  const t = themes.daylight;
+  assert.deepEqual([t.bgInner, t.bgMid, t.bgOuter, t.plateTop], ["#ffffff", "#ffffff", "#ffffff", "#ffffff"]);
+  const svg = renderSvg(sampleData(), { theme: "daylight", animate: false });
+  assert.match(svg, new RegExp(`id="glassEdge"[^>]*><stop offset="0" stop-color="${t.borderA}"[^>]*/><stop offset="1" stop-color="${t.borderB}"`));
+  assert.match(svg, new RegExp(`fill="url\\(#plateFill\\)" stroke="${t.plateEdge}"`));
+});
+
+test("a colour wave rolls across the grid in animated mode only", () => {
+  const data = sampleData();
+  for (const theme of ["aurora", "daylight"]) {
+    const t = themes[theme];
+    const svg = renderSvg(data, { theme, animate: true });
+    const strips = svg.split(`values="${t.wave.join(";")}" calcMode="discrete"`).length - 1;
+    assert.equal(strips, data.weeks.length, `${theme}: one wave strip per week`);
+    assert.ok(svg.indexOf(`values="${t.wave.join(";")}"`) < svg.indexOf('id="nearPlanets"'), "the wave sits under the near planets");
+    assert.ok(!renderSvg(data, { theme, animate: false }).includes(t.wave.join(";")), `${theme}: static mode has no wave`);
+  }
+});
+
+test("the plate has glowing pink and green neon-tube edges in both themes", () => {
+  for (const theme of ["aurora", "daylight"]) {
+    const t = themes[theme];
+    const svg = renderSvg(sampleData(), { theme, animate: false });
+    for (const c of [t.edgeBack, t.edgeFront]) {
+      assert.match(svg, new RegExp(`stroke="${c}" stroke-width="2.6"[^>]*filter="url\\(#neon\\)"`), `${theme}: ${c} tube`);
+    }
+  }
+  assert.match(renderSvg(sampleData(), { theme: "daylight" }), /stroke="url\(#glassEdge\)" stroke-width="2" filter="url\(#neon\)"/, "day cards glow");
+});
+
+test("day and night themes share one neon palette", () => {
+  const { aurora: a, daylight: d } = themes;
+  assert.deepEqual(d.ramp.slice(1), a.ramp.slice(1), "activity levels");
+  for (const k of ["peak", "planets", "wave", "edgeBack", "edgeFront", "ring", "glow"]) assert.deepEqual(d[k], a[k], k);
+});
