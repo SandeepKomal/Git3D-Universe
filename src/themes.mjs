@@ -1,7 +1,7 @@
 // Colour tokens. Every colour that reaches the SVG comes from here.
 // Night mode uses glowing neons (blue, green, purple, pink) with a
-// radium-yellow peak. Day mode is clean white with vivid neons. Both have
-// glowing pink and green neon-tube edges on the plate.
+// radium-yellow peak. Day mode uses the same neon palette on clean white.
+// Both have glowing pink and green neon-tube edges on the plate.
 // In animated mode a colour wave rolls across the grid in both themes.
 
 export const themes = {
@@ -44,40 +44,40 @@ export const themes = {
     neonEdges: true,
     stars: true,
   },
-  // Day: clean white with glowing pink and green neon edges, and vivid neons:
-  // cyan → neon green → electric purple → hot pink, with a neon-orange peak.
+  // Day: clean white with exactly the same neon palette as night mode: neon
+  // blue → neon green → neon purple → neon pink, and a radium-yellow peak.
   daylight: {
     dark: false,
     bgInner: "#ffffff",
     bgMid: "#ffffff",
     bgOuter: "#ffffff",
     plateTop: "#ffffff",
-    plateEdge: "#ff2bd6",
+    plateEdge: "#ff10f0",
     plateSide: "#f6f7fb",
-    ramp: ["#ffffff", "#00c8ff", "#00e070", "#a64dff", "#ff2bd6"],
-    peak: "#ff9100",
+    ramp: ["#ffffff", "#00b7ff", "#39ff14", "#bc13fe", "#ff10f0"],
+    peak: "#e6ff00",
     ink: "#141433",
     mute: "#5d6285",
     rule: "#f1e4f3",
-    ring: "#00c8ff",
+    ring: "#00b7ff",
     ringHi: "#ffffff",
-    glow: "#ff2bd6",
+    glow: "#ff10f0",
     cellEdge: "#e7e9f2",
     planetLight: "#ffffff",
     nebulaA: "#ffffff",
     nebulaB: "#ffffff",
     grid: "#eef0f6",
-    planets: ["#ff2bd6", "#00e070", "#00c8ff", "#ff9100", "#a64dff", "#00e5d4", "#ffc400"],
+    planets: ["#ff10f0", "#39ff14", "#00b7ff", "#e6ff00", "#bc13fe", "#00fff0", "#ff7a00"],
     floor: ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"],
     shadow: "#9aa0c4",
     // Card borders run pink to green.
-    borderA: "#ff2bd6",
-    borderB: "#00e070",
-    wave: ["#ff2bd6", "#00c8ff", "#00e070", "#a64dff"],
+    borderA: "#ff10f0",
+    borderB: "#39ff14",
+    wave: ["#ff10f0", "#00b7ff", "#39ff14", "#bc13fe"],
     waveOpacity: 0.3,
     // Glowing neon-tube edges on the plate, and a glowing frame on the cards.
-    edgeBack: "#ff2bd6",
-    edgeFront: "#00e070",
+    edgeBack: "#ff10f0",
+    edgeFront: "#39ff14",
     neonFrame: true,
     neonEdges: true,
     stars: false,

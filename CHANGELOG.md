@@ -12,10 +12,10 @@ All notable changes to Git3D Universe are documented here.
 - The plate's edges are glowing neon tubes, each a thick bright core with a soft halo: hot pink along the back and neon green along the front, in both themes.
 - In the day theme the cards also get a glowing pink-to-green neon frame.
 
-### White day theme with vivid neons
+### White day theme, same neons as night
 - `daylight` is pure white, with no grey gradient, tinted clouds or haze.
-- Vivid neons: cyan `#00c8ff` → neon green `#00e070` → electric purple `#a64dff` → hot pink `#ff2bd6`, with a neon-orange `#ff9100` peak day. Bar tops are outlined in a deeper shade of their own colour. The planets and the wave use the same neons.
-- New theme tokens `borderA`, `borderB`, `edgeBack`, `edgeFront`, `neonFrame`, `wave` and `waveOpacity`. The night theme otherwise looks the same.
+- It uses exactly the same neon palette as `aurora`: neon blue `#00b7ff` → neon green `#39ff14` → neon purple `#bc13fe` → neon pink `#ff10f0`, with a radium-yellow `#e6ff00` peak day. The planets, wave and neon-tube edges match too. Bar tops are outlined in a deeper shade of their own colour, so the neons stay crisp on white.
+- New theme tokens `borderA`, `borderB`, `edgeBack`, `edgeFront`, `neonFrame`, `wave` and `waveOpacity`. A test keeps the two palettes in sync.
 
 ## [1.2.1] - 2026-10-09
 

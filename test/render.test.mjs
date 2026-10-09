@@ -147,3 +147,9 @@ test("the plate has glowing pink and green neon-tube edges in both themes", () =
   }
   assert.match(renderSvg(sampleData(), { theme: "daylight" }), /stroke="url\(#glassEdge\)" stroke-width="2" filter="url\(#neon\)"/, "day cards glow");
 });
+
+test("day and night themes share one neon palette", () => {
+  const { aurora: a, daylight: d } = themes;
+  assert.deepEqual(d.ramp.slice(1), a.ramp.slice(1), "activity levels");
+  for (const k of ["peak", "planets", "wave", "edgeBack", "edgeFront", "ring", "glow"]) assert.deepEqual(d[k], a[k], k);
+});
