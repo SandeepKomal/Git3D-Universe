@@ -1,6 +1,6 @@
 // Colour tokens. Every colour that reaches the SVG comes from here.
-// Both themes use radium (neon) colours: blue, green, purple and pink, with
-// a radium-yellow peak day at night and a neon-orange one by day.
+// Both themes use neon colours: blue, green, purple and pink. Night mode has
+// a radium-yellow peak day; day mode is clean white with a tangerine peak.
 
 export const themes = {
   // Night: fluorescent colours on near-black. Activity goes neon blue →
@@ -30,35 +30,45 @@ export const themes = {
     // Empty days drift through this band across the year.
     floor: ["#141137", "#161642", "#141b44", "#18143f", "#1e1242", "#141137"],
     shadow: "#000000",
-    // Bar tops get a bright outline in their own colour, like a neon tube.
+    borderA: "#ffffff",
+    borderB: "#00b7ff",
+    rim: "#ff10f0",
+    // Bar tops get an outline in a tint of their own colour, like a neon tube.
     neonEdges: true,
     stars: true,
   },
-  // Day: slightly deeper neons, which stay readable on a white sky.
+  // Day: clean white with neon-pink and neon-green borders, and light, crisp
+  // neon colours: sky blue → fresh green → lavender → bubblegum pink, with a
+  // tangerine peak day.
   daylight: {
     dark: false,
     bgInner: "#ffffff",
-    bgMid: "#f5f6fc",
-    bgOuter: "#e9ebf5",
-    plateTop: "#eceefa",
-    plateEdge: "#c4c9e6",
-    plateSide: "#d5d9ef",
-    ramp: ["#e2e5f5", "#0091ff", "#1fc700", "#a100ff", "#ff00b8"],
-    peak: "#ff6a00",
+    bgMid: "#ffffff",
+    bgOuter: "#ffffff",
+    plateTop: "#ffffff",
+    plateEdge: "#ff4fcf",
+    plateSide: "#f6f7fb",
+    ramp: ["#ffffff", "#3ec5ff", "#4ee66a", "#b77cff", "#ff5fd2"],
+    peak: "#ff8a1f",
     ink: "#141433",
     mute: "#5d6285",
-    rule: "#d9dcef",
-    ring: "#0091ff",
+    rule: "#f1e4f3",
+    ring: "#3ec5ff",
     ringHi: "#ffffff",
-    glow: "#ff00b8",
-    cellEdge: "#c3c8e6",
+    glow: "#ff4fcf",
+    cellEdge: "#e7e9f2",
     planetLight: "#ffffff",
-    nebulaA: "#ffd1f3",
-    nebulaB: "#cfe8ff",
-    grid: "#cdd2ec",
-    planets: ["#ff00b8", "#1fc700", "#0091ff", "#ff6a00", "#a100ff", "#00b8c7", "#e0b800"],
-    floor: ["#e6e9fa", "#e3effb", "#e1f6f0", "#ece6fa", "#f8e6f4", "#e6e9fa"],
-    shadow: "#7d84b3",
+    nebulaA: "#ffffff",
+    nebulaB: "#ffffff",
+    grid: "#eef0f6",
+    planets: ["#ff5fd2", "#4ee66a", "#3ec5ff", "#ff8a1f", "#b77cff", "#2ee6d6", "#ffc83d"],
+    floor: ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"],
+    shadow: "#9aa0c4",
+    // Card borders run pink to green, and the plate's front edge glows green.
+    borderA: "#ff4fcf",
+    borderB: "#4ee66a",
+    rim: "#4ee66a",
+    neonEdges: true,
     stars: false,
   },
 };

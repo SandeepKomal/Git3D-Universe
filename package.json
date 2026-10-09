@@ -1,6 +1,6 @@
 {
   "name": "git3d-universe",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Generate a 3D GitHub contribution universe as a static SVG for profile READMEs.",
   "type": "module",
   "bin": {

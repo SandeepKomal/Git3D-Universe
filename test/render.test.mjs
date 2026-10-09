@@ -116,3 +116,11 @@ test("each planet switches depth layers as a whole, so labels are never cut in t
   assert.equal(svg.split('values="visible;hidden" keyTimes="0;0.5" calcMode="discrete"').length - 1, n, "near copies show on the near half");
   assert.equal(svg.split('values="hidden;visible" keyTimes="0;0.5" calcMode="discrete"').length - 1, n, "far copies show on the far half");
 });
+
+test("day theme is clean white with pink and green borders", () => {
+  const t = themes.daylight;
+  assert.deepEqual([t.bgInner, t.bgMid, t.bgOuter, t.plateTop], ["#ffffff", "#ffffff", "#ffffff", "#ffffff"]);
+  const svg = renderSvg(sampleData(), { theme: "daylight", animate: false });
+  assert.match(svg, new RegExp(`id="glassEdge"[^>]*><stop offset="0" stop-color="${t.borderA}"[^>]*/><stop offset="1" stop-color="${t.borderB}"`));
+  assert.match(svg, new RegExp(`fill="url\\(#plateFill\\)" stroke="${t.plateEdge}"`));
+});

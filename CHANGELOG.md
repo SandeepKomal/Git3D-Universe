@@ -2,6 +2,14 @@
 
 All notable changes to Git3D Universe are documented here.
 
+## [1.2.2] - 2026-10-09
+
+### Clean white day theme
+- `daylight` is now pure white, with no grey gradient, tinted clouds or pink haze under the terrain.
+- Neon-pink and neon-green borders: the plate has a pink outline and a green front edge, and the cards have a pink-to-green gradient border on a solid white background.
+- Light, crisp neon colours: sky blue `#3ec5ff` → fresh green `#4ee66a` → lavender `#b77cff` → bubblegum pink `#ff5fd2`, with a tangerine `#ff8a1f` peak day. Bar tops are outlined in a deeper shade of their own colour.
+- New theme tokens `borderA`, `borderB` and `rim`. The night theme looks the same as before.
+
 ## [1.2.1] - 2026-10-09
 
 ### Fixed

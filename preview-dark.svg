@@ -8,7 +8,7 @@
   <radialGradient id="gridFade" cx="50%" cy="58%" r="52%"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <mask id="gridMask"><rect width="1280" height="760" fill="url(#gridFade)"/></mask>
   <linearGradient id="glassFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.09"/><stop offset="1" stop-color="#fff" stop-opacity="0.03"/></linearGradient>
-  <linearGradient id="glassEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#00b7ff" stop-opacity=".35"/></linearGradient>
+  <linearGradient id="glassEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/><stop offset="1" stop-color="#00b7ff" stop-opacity="0.35"/></linearGradient>
   <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff10f0" stop-opacity=".35"/><stop offset="1" stop-color="#ff10f0" stop-opacity="0"/></linearGradient>
   <linearGradient id="plateFill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b091b"/><stop offset="1" stop-color="#201f32"/></linearGradient>
   <linearGradient id="rimFade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff10f0" stop-opacity=".9"/><stop offset=".6" stop-color="#ff10f0" stop-opacity=".45"/><stop offset="1" stop-color="#ff10f0" stop-opacity=".1"/></linearGradient>
@@ -92,7 +92,7 @@
   <text y="-28.8" text-anchor="middle" font-size="12" font-weight="600" fill="#f2f4ff" paint-order="stroke" stroke="#030308" stroke-width="3" stroke-linejoin="round">dotfiles<tspan fill="#a6abcf" font-weight="500"> ★2</tspan></text>
 </g></g></g>
 <g>
-  <rect x="40" y="36" width="440" height="236" rx="22" fill="url(#glassFill)" stroke="url(#glassEdge)"/>
+  <rect x="40" y="36" width="440" height="236" rx="22" fill="url(#glassFill)" stroke="url(#glassEdge)" stroke-width="1"/>
   <rect x="68" y="62" width="18" height="3" rx="1.5" fill="#ff10f0"/>
   <text x="92" y="67" font-size="9.5" font-weight="700" letter-spacing="1.6" fill="#ff10f0">CONTRIBUTION OBSERVATORY</text>
   <text x="452" y="67" text-anchor="end" font-size="10.5" fill="#a6abcf" opacity=".8">Updated 2026-10-01</text>
@@ -109,7 +109,7 @@
   <circle cx="452" cy="241.2" r="3.2" fill="#ff10f0" stroke="#030308" stroke-width="1.5"/>
 </g>
 <g>
-  <rect x="900" y="604" width="340" height="128" rx="18" fill="url(#glassFill)" stroke="url(#glassEdge)"/>
+  <rect x="900" y="604" width="340" height="128" rx="18" fill="url(#glassFill)" stroke="url(#glassEdge)" stroke-width="1"/>
   <text x="928" y="632" font-size="11" fill="#a6abcf">Daily intensity</text>
   <polygon points="934.1,673.7 945,669.9 949.9,678.3 939,682.1" fill="#16133a" stroke="#4b3fb0" stroke-width=".6"/><polygon points="965,682.1 975.9,678.3 975.9,672.5 965,676.3" fill="#0097d2"/><polygon points="960.1,673.7 965,682.1 965,676.3 960.1,667.9" fill="#00729e"/><polygon points="960.1,667.9 971,664.1 975.9,672.5 965,676.3" fill="#29c3ff" stroke="#4b3fb0" stroke-width=".45" stroke-opacity=".62"/><polygon points="991,682.1 1001.9,678.3 1001.9,666.8 991,670.5" fill="#2fd210"/><polygon points="986.1,673.7 991,682.1 991,670.5 986.1,662.1" fill="#239e0c"/><polygon points="986.1,662.1 997,658.4 1001.9,666.8 991,670.5" fill="#59ff3a" stroke="#4b3fb0" stroke-width=".45" stroke-opacity=".62"/><polygon points="1017,682.1 1027.9,678.3 1027.9,661 1017,664.7" fill="#9b10d1"/><polygon points="1012.1,673.7 1017,682.1 1017,664.7 1012.1,656.3" fill="#750c9e"/><polygon points="1012.1,656.3 1023,652.6 1027.9,661 1017,664.7" fill="#c739fe" stroke="#4b3fb0" stroke-width=".45" stroke-opacity=".62"/><polygon points="1043,682.1 1053.9,678.3 1053.9,655.2 1043,658.9" fill="#d20dc5"/><polygon points="1038.1,673.7 1043,682.1 1043,658.9 1038.1,650.5" fill="#9e0a95"/><polygon points="1038.1,650.5 1049,646.8 1053.9,655.2 1043,658.9" fill="#ff36f2" stroke="#4b3fb0" stroke-width=".45" stroke-opacity=".62"/>
   <text x="928" y="700" font-size="10" fill="#a6abcf" opacity=".8">less</text>
