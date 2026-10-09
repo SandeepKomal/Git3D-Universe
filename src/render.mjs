@@ -138,7 +138,7 @@ function terrain(data, stats, t, project, animate) {
       floor += poly(
         [project(u, v), project(u + size, v), project(u + size, v + size), project(u, v + size)],
         t.dark ? adjust(band, 0.9 + jitter() * 0.2) : band,
-        ` opacity="${t.dark ? ".9" : "1"}" stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity="${t.dark ? ".7" : ".55"}"`
+        ` opacity="${t.dark ? ".9" : "1"}" stroke="${t.cellEdge}" stroke-width="${t.dark ? ".6" : "1.2"}" stroke-opacity="${t.dark ? ".7" : "1"}"`
       );
       continue;
     }
@@ -442,7 +442,7 @@ function legend(stats, t) {
     const p = makeProjector({ yawDeg: YAW, pitchDeg: PITCH, cx: x + 42 + i * 26, cy: y + 72 });
     const size = 12;
     if (i === 0) {
-      ramp += poly([p(-size / 2, -size / 2), p(size / 2, -size / 2), p(size / 2, size / 2), p(-size / 2, size / 2)], color, ` stroke="${t.cellEdge}" stroke-width=".6"`);
+      ramp += poly([p(-size / 2, -size / 2), p(size / 2, -size / 2), p(size / 2, size / 2), p(-size / 2, size / 2)], color, ` stroke="${t.cellEdge}" stroke-width="${t.dark ? ".6" : "1.2"}"`);
       return;
     }
     for (const face of prismFaces(p, -size / 2, -size / 2, size, i * 9)) {

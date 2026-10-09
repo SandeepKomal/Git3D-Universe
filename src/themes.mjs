@@ -62,7 +62,8 @@ export const themes = {
     ring: "#00b7ff",
     ringHi: "#ffffff",
     glow: "#ff10f0",
-    cellEdge: "#e7e9f2",
+    // Visible grid lines between the empty squares on white.
+    cellEdge: "#c3c7de",
     planetLight: "#ffffff",
     nebulaA: "#ffffff",
     nebulaB: "#ffffff",

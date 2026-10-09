@@ -15,6 +15,7 @@ All notable changes to Git3D Universe are documented here.
 ### White day theme, same neons as night
 - `daylight` is pure white, with no grey gradient, tinted clouds or haze.
 - It uses exactly the same neon palette as `aurora`: neon blue `#00b7ff` → neon green `#39ff14` → neon purple `#bc13fe` → neon pink `#ff10f0`, with a radium-yellow `#e6ff00` peak day. The planets, wave and neon-tube edges match too. Bar tops are outlined in a deeper shade of their own colour, so the neons stay crisp on white.
+- Grid lines between the empty squares are thicker (1.2px), fully opaque and a darker lavender-grey, so the grid stays visible on white.
 - New theme tokens `borderA`, `borderB`, `edgeBack`, `edgeFront`, `neonFrame`, `wave` and `waveOpacity`. A test keeps the two palettes in sync.
 
 ## [1.2.1] - 2026-10-09
