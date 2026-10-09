@@ -2,6 +2,13 @@
 
 All notable changes to Git3D Universe are documented here.
 
+## [1.3.1] - 2026-10-09
+
+### Fixed
+- Planets on the far side of their orbit show their names again whenever the name sits in clear sky. A name is hidden only while it would overlap the grid or the bars, so it is never drawn over the terrain or cut off.
+- How it works: the terrain's outline (the plate's top surface and every bar's box) is passed to the orbit renderer. Each name's position is sampled at 72 points around its orbit, using the same paced timing as the animation, and a discrete visibility animation shows the name only where it is clear. Near-side names always show. Static images follow the same rule.
+- Names now sit in their own layer above the planets.
+
 ## [1.3.0] - 2026-10-09
 
 ### Colour wave
