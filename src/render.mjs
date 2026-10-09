@@ -335,21 +335,21 @@ function orbits(data, t, animate) {
     const place = animate ? "" : ` transform="translate(${r1(CX + R * Math.cos(angle))} ${r1(CY + R * RING_FLATTEN * near)})"`;
     const staticScale = animate ? "" : ` transform="scale(${r1((1 + 0.18 * near) * 100) / 100})"`;
 
+    // Labels live in the planet's own depth layer: when the planet passes behind
+    // the terrain its name is hidden with it, and it dims on the far side.
+    const fade = (n) => r1((n >= 0 ? 1 : 1 + 0.5 * n) * 100) / 100;
+    const fadeAnim = animate
+      ? `<animate attributeName="opacity" values="${scales.map((_, k) => fade(Math.sin((2 * Math.PI * k) / samples))).join(";")}" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
+      : "";
     const sphere = planetSphere(i, radius, color, seed, i === 0, animate, t);
     defs.push(sphere.defs);
     const body = `<g${place}>${motion}<g${staticScale}>${scale}
   <ellipse cx="0" cy="${r1(radius + 7)}" rx="${r1(radius * 1.15)}" ry="${r1(radius * 0.28)}" fill="#000" opacity=".3" filter="url(#soft4)"/>
   ${sphere.svg}
+  <text y="${r1(-radius - 11)}" text-anchor="middle" font-size="12" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"${animate ? "" : ` opacity="${fade(near)}"`}>${fadeAnim}${name}${starsLabel}</text>
 </g></g>`;
 
-    // Labels sit above everything so they stay readable when the planet is
-    // behind the terrain; they dim on the far side instead of being cut off.
-    const fade = (n) => r1((n >= 0 ? 1 : 1 + 0.5 * n) * 100) / 100;
-    const fadeAnim = animate
-      ? `<animate attributeName="opacity" values="${scales.map((_, k) => fade(Math.sin((2 * Math.PI * k) / samples))).join(";")}" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
-      : "";
-    const label = `<g${place}>${motion}<g${staticScale}>${scale}<text y="${r1(-radius - 11)}" text-anchor="middle" font-size="12" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"${animate ? "" : ` opacity="${fade(near)}"`}>${fadeAnim}${name}${starsLabel}</text></g></g>`;
-    return { body, label, near };
+    return { body, near };
   };
 
   const defs = [];
@@ -362,7 +362,6 @@ function orbits(data, t, animate) {
   return {
     back: RINGS.map((R, i) => ringPath(R, i, 1)).join("") + layer("farSide", (b) => b.near < 0),
     front: RINGS.map((R, i) => ringPath(R, i, 0)).join("") + layer("nearSide", (b) => b.near >= 0),
-    labels: bodies.map((b) => b.label).join("\n"),
     defs: defs.join("\n"),
   };
 }
@@ -489,7 +488,6 @@ ${bars}
 ${months}
 ${beacon(peakTop, stats, t)}
 ${orbit.front}
-${orbit.labels}
 ${panel(data, stats, t)}
 ${legend(stats, t)}
 </svg>

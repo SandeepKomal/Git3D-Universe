@@ -22,7 +22,7 @@ No third-party fonts, icons, templates, or image libraries are intentionally bun
 
 ## Visual design provenance
 
-The rendered scene is composed entirely by the project's own code in `src/render.mjs`, `src/geometry.mjs`, and `src/themes.mjs`. That includes the projected terrain and plate, the colour band on empty days, the split-depth orbit layers and their glow, core and highlight lines, the lit 3D planets (gradients, cloud bands, storm spot, terminator, specular glint, atmosphere rim and banded ring), the peak-day beacon, the floor grid, the nebula backdrop, the stats and legend cards, and the prism legend. All colour values are defined in `src/themes.mjs`. No external images, icon sets, fonts, SVG templates, or generated artwork are embedded. The font stack refers only to fonts already installed on the viewer's system.
+The rendered scene is composed entirely by the project's own code in `src/render.mjs`, `src/geometry.mjs`, and `src/themes.mjs`. That includes the projected terrain and plate, the colour band on empty days, the split-depth orbit layers and their glow, core and highlight lines, the lit 3D planets (gradients, cloud bands, storm spot, terminator, specular glint, atmosphere rim and banded ring), the peak-day beacon, the floor grid, the nebula backdrop, the stats and legend cards, and the prism legend. All colour values are defined in `src/themes.mjs`. Since v1.2.0 the themes use the maintainer's own website palette. No external images, icon sets, fonts, SVG templates, or generated artwork are embedded. The font stack refers only to fonts already installed on the viewer's system.
 
 ## Release review
 

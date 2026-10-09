@@ -2,6 +2,16 @@
 
 All notable changes to Git3D Universe are documented here.
 
+## [1.2.0] - 2026-10-09
+
+### New colour schemes
+- Both themes are built on one palette: near-black and silver, a magenta, violet and burnt-orange signature gradient, and periwinkle, cyan, gold, orange and pink accents.
+- `aurora` (night): activity climbs a full spectrum (periwinkle → cyan → gold → orange) with the peak day in hot pink, over a deep violet floor with magenta and burnt-orange nebula clouds.
+- `daylight` (day): a silver-white sky, activity deepening from lilac to violet, and a burnt-orange peak day.
+
+### Fixed
+- Planet labels now share their planet's depth layer. When a planet passes behind the terrain, its name is hidden with it instead of floating on top of the grid and bars.
+
 ## [1.1.0] - 2026-10-08
 
 ### 3D scene redesign

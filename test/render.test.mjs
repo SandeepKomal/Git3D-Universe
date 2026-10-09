@@ -87,3 +87,13 @@ test("unexpected repo values cannot break the geometry or the render", () => {
   assert.ok(!/NaN|undefined|Infinity/.test(svg));
   assert.ok(!svg.includes("onload"));
 });
+
+test("planet labels share their planet's depth layer instead of floating above the terrain", () => {
+  const svg = renderSvg(sampleData(), { animate: true });
+  const plate = svg.indexOf('fill="url(#plateFill)"');
+  const near = svg.indexOf('clip-path="url(#nearSide)"');
+  const labels = [...svg.matchAll(/>infra-modules</g)].map((m) => m.index);
+  assert.equal(labels.length, 2, "one copy per depth layer");
+  assert.ok(labels[0] < plate, "far copy is drawn before the terrain");
+  assert.ok(labels[1] > near, "near copy is drawn in the near layer");
+});
