@@ -69,13 +69,15 @@ test("an empty calendar renders without a peak beacon or invalid numbers", () =>
   assert.ok(svg.includes("No activity yet"));
 });
 
-test("planets are lit spheres, and repos without a language colour get a palette colour", () => {
+test("planets are lit spheres coloured from the theme's neon palette", () => {
   const data = sampleData();
-  data.repos[1].color = null;
   const svg = renderSvg(data, { theme: "aurora" });
   assert.ok(svg.includes('id="pl0b"') && svg.includes('id="pl0c"'), "per-planet gradient and clip");
   assert.ok(svg.includes('fill="url(#plTerm)"') && svg.includes('fill="url(#plSpec)"'), "terminator and specular");
-  assert.ok(themes.aurora.planets.some((c) => svg.includes(`stop-color="${c}"`)), "fallback colour from the theme palette");
+  data.repos.forEach((r, i) => {
+    assert.ok(svg.includes(`stop-color="${themes.aurora.planets[i % themes.aurora.planets.length]}"`), `planet ${i} uses the palette`);
+    assert.ok(!svg.includes(`stop-color="${r.color}"`), `planet ${i} ignores the language colour`);
+  });
 });
 
 test("unexpected repo values cannot break the geometry or the render", () => {
@@ -86,4 +88,21 @@ test("unexpected repo values cannot break the geometry or the render", () => {
   const svg = renderSvg(data);
   assert.ok(!/NaN|undefined|Infinity/.test(svg));
   assert.ok(!svg.includes("onload"));
+});
+
+test("planet labels share their planet's depth layer instead of floating above the terrain", () => {
+  const svg = renderSvg(sampleData(), { animate: true });
+  const plate = svg.indexOf('fill="url(#plateFill)"');
+  const near = svg.indexOf('clip-path="url(#nearSide)"');
+  const labels = [...svg.matchAll(/>infra-modules</g)].map((m) => m.index);
+  assert.equal(labels.length, 2, "one copy per depth layer");
+  assert.ok(labels[0] < plate, "far copy is drawn before the terrain");
+  assert.ok(labels[1] > near, "near copy is drawn in the near layer");
+});
+
+test("night theme outlines bar tops in a lighter tint of their own colour", () => {
+  const svg = renderSvg(sampleData(), { theme: "aurora", animate: false });
+  assert.ok(themes.aurora.neonEdges);
+  assert.ok(!svg.includes(`stroke="${themes.aurora.cellEdge}" stroke-width=".6" stroke-opacity=".62"`), "bar tops no longer use the flat cell edge");
+  assert.match(svg, /stroke-width="1" stroke-opacity="\.95"/);
 });

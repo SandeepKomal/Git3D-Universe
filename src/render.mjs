@@ -21,7 +21,6 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
 const r1 = (n) => Math.round(n * 10) / 10;
-const HEX = /^#[0-9a-fA-F]{6}$/;
 
 function adjust(hex, k) {
   const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -144,7 +143,11 @@ function terrain(data, stats, t, project) {
     }
     const height = heightOf(day.count);
     for (const face of prismFaces(project, u, v, size, height)) {
-      const edge = face.top ? ` stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity=".62"` : "";
+      const edge = !face.top
+        ? ""
+        : t.neonEdges
+          ? ` stroke="${mix(base, "#ffffff", 0.45)}" stroke-width="1" stroke-opacity=".95"`
+          : ` stroke="${t.cellEdge}" stroke-width=".6" stroke-opacity=".62"`;
       const glow = face.top && isPeak ? ` filter="url(#glow)"` : "";
       svg += poly(face.pts, adjust(base, face.shade), `${edge}${glow}`);
     }
@@ -226,7 +229,7 @@ function planetSphere(i, r, color, seed, ringed, animate, t) {
     `<stop offset=".62" stop-color="${color}"/><stop offset=".88" stop-color="${adjust(color, 0.42)}"/>` +
     `<stop offset="1" stop-color="${adjust(color, 0.2)}"/></radialGradient>` +
     `<radialGradient id="${id}a" r="50%"><stop offset=".7" stop-color="${color}" stop-opacity="0"/>` +
-    `<stop offset=".79" stop-color="${adjust(color, 1.3)}" stop-opacity=".38"/><stop offset=".88" stop-color="${color}" stop-opacity=".1"/>` +
+    `<stop offset=".79" stop-color="${adjust(color, 1.3)}" stop-opacity="${t.neonEdges ? 0.7 : 0.38}"/><stop offset=".88" stop-color="${color}" stop-opacity="${t.neonEdges ? 0.28 : 0.1}"/>` +
     `<stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient>` +
     `<clipPath id="${id}c"><circle r="${r1(r)}"/></clipPath>`;
 
@@ -302,7 +305,6 @@ function orbits(data, t, animate) {
   const repos = (data.repos || []).slice(0, 6).map((r) => ({
     name: String(r?.name ?? ""),
     stars: Math.max(0, Math.floor(Number(r?.stars)) || 0),
-    color: r?.color,
   }));
   const maxStars = Math.max(1, ...repos.map((r) => r.stars));
   const planet = (repo, i) => {
@@ -311,7 +313,8 @@ function orbits(data, t, animate) {
     const ry = r1(R * RING_FLATTEN);
     const radius = 14 + 10 * Math.sqrt(repo.stars / maxStars);
     const seed = hashName(repo.name);
-    const color = HEX.test(repo.color || "") ? repo.color : t.planets[seed % t.planets.length];
+    // Planets always use the theme's neon palette, one distinct colour each.
+    const color = t.planets[i % t.planets.length];
     const name = esc(repo.name.length > 18 ? `${repo.name.slice(0, 17)}…` : repo.name);
     const starsLabel = repo.stars > 0 ? `<tspan fill="${t.mute}" font-weight="500"> ★${repo.stars}</tspan>` : "";
     const duration = 52 + ring * 20 + i * 3;
@@ -335,21 +338,21 @@ function orbits(data, t, animate) {
     const place = animate ? "" : ` transform="translate(${r1(CX + R * Math.cos(angle))} ${r1(CY + R * RING_FLATTEN * near)})"`;
     const staticScale = animate ? "" : ` transform="scale(${r1((1 + 0.18 * near) * 100) / 100})"`;
 
+    // Labels live in the planet's own depth layer: when the planet passes behind
+    // the terrain its name is hidden with it, and it dims on the far side.
+    const fade = (n) => r1((n >= 0 ? 1 : 1 + 0.5 * n) * 100) / 100;
+    const fadeAnim = animate
+      ? `<animate attributeName="opacity" values="${scales.map((_, k) => fade(Math.sin((2 * Math.PI * k) / samples))).join(";")}" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
+      : "";
     const sphere = planetSphere(i, radius, color, seed, i === 0, animate, t);
     defs.push(sphere.defs);
     const body = `<g${place}>${motion}<g${staticScale}>${scale}
   <ellipse cx="0" cy="${r1(radius + 7)}" rx="${r1(radius * 1.15)}" ry="${r1(radius * 0.28)}" fill="#000" opacity=".3" filter="url(#soft4)"/>
   ${sphere.svg}
+  <text y="${r1(-radius - 11)}" text-anchor="middle" font-size="12" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"${animate ? "" : ` opacity="${fade(near)}"`}>${fadeAnim}${name}${starsLabel}</text>
 </g></g>`;
 
-    // Labels sit above everything so they stay readable when the planet is
-    // behind the terrain; they dim on the far side instead of being cut off.
-    const fade = (n) => r1((n >= 0 ? 1 : 1 + 0.5 * n) * 100) / 100;
-    const fadeAnim = animate
-      ? `<animate attributeName="opacity" values="${scales.map((_, k) => fade(Math.sin((2 * Math.PI * k) / samples))).join(";")}" dur="${duration}s" begin="${begin}s" repeatCount="indefinite"/>`
-      : "";
-    const label = `<g${place}>${motion}<g${staticScale}>${scale}<text y="${r1(-radius - 11)}" text-anchor="middle" font-size="12" font-weight="600" fill="${t.ink}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"${animate ? "" : ` opacity="${fade(near)}"`}>${fadeAnim}${name}${starsLabel}</text></g></g>`;
-    return { body, label, near };
+    return { body, near };
   };
 
   const defs = [];
@@ -362,7 +365,6 @@ function orbits(data, t, animate) {
   return {
     back: RINGS.map((R, i) => ringPath(R, i, 1)).join("") + layer("farSide", (b) => b.near < 0),
     front: RINGS.map((R, i) => ringPath(R, i, 0)).join("") + layer("nearSide", (b) => b.near >= 0),
-    labels: bodies.map((b) => b.label).join("\n"),
     defs: defs.join("\n"),
   };
 }
@@ -489,7 +491,6 @@ ${bars}
 ${months}
 ${beacon(peakTop, stats, t)}
 ${orbit.front}
-${orbit.labels}
 ${panel(data, stats, t)}
 ${legend(stats, t)}
 </svg>
