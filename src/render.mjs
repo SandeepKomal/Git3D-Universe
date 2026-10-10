@@ -339,32 +339,55 @@ function mixPie(data, t, x0, w, top, size = 1) {
     return list;
   };
   const poly = (list, fill) => `<polygon points="${list.map((p) => `${r1(p.x)},${r1(p.y)}`).join(" ")}" fill="${fill}"/>`;
-  const gap = parts.length > 1 ? 0.03 : 0;
   let a = 0;
   const slices = parts.map((p, i) => {
     const span = (p.v / sum) * 2 * Math.PI;
-    const s = { ...p, pct: pct[i], a0: a + gap / 2, a1: a + span - gap / 2, mid: a + span / 2 };
+    const s = { ...p, i, pct: pct[i], a0: a, a1: a + span, mid: a + span / 2 };
     a += span;
     return s;
   });
+
+  // Materials: each face is lit from the top left; the rim and the hole's
+  // wall fall into shade along their length.
+  const grads = [];
+  const lin = (id, x1, y1, x2, y2, stops) =>
+    grads.push(`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${r1(x1)}" y1="${r1(y1)}" x2="${r1(x2)}" y2="${r1(y2)}">` +
+      stops.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join("") + `</linearGradient>`);
   let sides = "", inner = "", tops = "";
   for (const s of slices) {
-    if (s.a1 <= s.a0) continue;
-    for (const [l, h] of runs(s.a0, s.a1, facesOut)) sides += poly([...arcPts(1, l, h), ...arcPts(1, l, h, true).reverse()], adjust(s.colour, 0.6));
-    for (const [l, h] of runs(s.a0, s.a1, (a) => !facesOut(a))) inner += poly([...arcPts(hole, l, h), ...arcPts(hole, l, h, true).reverse()], adjust(s.colour, 0.45));
-    tops += poly([...arcPts(1, s.a0, s.a1), ...arcPts(hole, s.a0, s.a1).reverse()], s.colour);
+    lin(`mixF${s.i}`, cx - R, cy - R, cx + R, cy + R, [[0, adjust(s.colour, 1.22)], [0.5, s.colour], [1, adjust(s.colour, 0.82)]]);
+    lin(`mixR${s.i}`, cx - R, cy - R, cx + R + off.x, cy + R + off.y, [[0, adjust(s.colour, 0.72)], [1, adjust(s.colour, 0.42)]]);
+    for (const [l, h] of runs(s.a0, s.a1, facesOut)) sides += poly([...arcPts(1, l, h), ...arcPts(1, l, h, true).reverse()], `url(#mixR${s.i})`);
+    for (const [l, h] of runs(s.a0, s.a1, (a) => !facesOut(a))) inner += poly([...arcPts(hole, l, h), ...arcPts(hole, l, h, true).reverse()], adjust(s.colour, 0.38));
+    tops += poly([...arcPts(1, s.a0, s.a1), ...arcPts(hole, s.a0, s.a1).reverse()], `url(#mixF${s.i})`);
   }
-  const gloss = sum ? `<circle cx="${r1(cx)}" cy="${r1(cy)}" r="${r1(R)}" fill="url(#mixGloss)"/><circle cx="${r1(cx)}" cy="${r1(cy)}" r="${r1(R * hole)}" fill="${t.bgOuter}" fill-opacity="0"/>` : "";
+  // Even-width separators between slices, in the background colour, cut
+  // through the face and the rim alike.
+  const seps = slices.length > 1
+    ? slices.map((s) => {
+      const p0 = pt(hole, s.a0), p1 = pt(1, s.a0), p2 = pt(1, s.a0, true);
+      return `<line x1="${r1(p0.x)}" y1="${r1(p0.y)}" x2="${r1(p1.x)}" y2="${r1(p1.y)}"/>` +
+        (facesOut(s.a0) ? `<line x1="${r1(p1.x)}" y1="${r1(p1.y)}" x2="${r1(p2.x)}" y2="${r1(p2.y)}"/>` : "");
+    }).join("")
+    : "";
+  const sepLayer = seps ? `<g stroke="${t.bgOuter}" stroke-width="1.8" stroke-linecap="round">${seps}</g>` : "";
+  // A glossy highlight along the top-left of the outer edge, a soft shadow
+  // inside the hole, and a contact shadow beneath the pie.
+  const rimLight = `<path d="M${r1(pt(1.0, -1.25).x)},${r1(pt(1.0, -1.25).y)} A${r1(R)},${r1(R)} 0 0,1 ${r1(pt(1.0, 0.35).x)},${r1(pt(1.0, 0.35).y)}" fill="none" stroke="url(#mixRim)" stroke-width="1.6" stroke-linecap="round"/>`;
+  const holeShade = `<circle cx="${r1(cx)}" cy="${r1(cy)}" r="${r1(R * hole)}" fill="url(#mixHoleShade)"/>`;
+  const ground = `<ellipse cx="${r1(cx + off.x)}" cy="${r1(cy + R + off.y + 4)}" rx="${r1(R * 0.88)}" ry="${r1(R * 0.12)}" fill="${t.shadow}" opacity="${t.dark ? ".55" : ".22"}" filter="url(#soft4)"/>`;
+  const gloss = sum ? `<circle cx="${r1(cx)}" cy="${r1(cy)}" r="${r1(R)}" fill="url(#mixGloss)"/>` : "";
   const track = sum ? "" : poly([...arcPts(1, 0, 2 * Math.PI, false, 48), ...arcPts(hole, 0, 2 * Math.PI, false, 48).reverse()], t.mixTrack);
 
   // Labels: slices on the right half label to the right, the rest to the
   // left, spread so they never overlap.
   const labelFor = (s, side, ly) => {
-    const edge = pt(1.02, s.mid, facesOut(s.mid));
-    const lx = side > 0 ? cx + R + 34 : cx - R - 34;
-    return `<polyline points="${r1(edge.x)},${r1(edge.y)} ${r1(lx - side * 8)},${r1(ly - 4)} ${r1(lx)},${r1(ly - 4)}" fill="none" stroke="${s.colour}" stroke-width="1.2"/>` +
-      `<circle cx="${r1(edge.x)}" cy="${r1(edge.y)}" r="2.2" fill="${s.colour}"/>` +
-      `<text x="${r1(lx + side * 4)}" y="${r1(ly)}" text-anchor="${side > 0 ? "start" : "end"}" font-size="12" fill="${t.mute}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"><tspan fill="${t.ink}" font-weight="700">${s.pct}%</tspan> ${esc(s.label)}</text>`;
+    const edge = pt(1.04, s.mid, facesOut(s.mid));
+    const lx = side > 0 ? cx + R + 36 : cx - R - 36;
+    return `<polyline points="${r1(edge.x)},${r1(edge.y)} ${r1(lx - side * 10)},${r1(ly - 4)} ${r1(lx)},${r1(ly - 4)}" fill="none" stroke="${s.colour}" stroke-width=".9" stroke-opacity=".9" stroke-linejoin="round"/>` +
+      `<circle cx="${r1(edge.x)}" cy="${r1(edge.y)}" r="2.6" fill="${t.bgOuter}" stroke="${s.colour}" stroke-width="1.3"/>` +
+      `<circle cx="${r1(lx)}" cy="${r1(ly - 4)}" r="1.4" fill="${s.colour}"/>` +
+      `<text x="${r1(lx + side * 6)}" y="${r1(ly)}" text-anchor="${side > 0 ? "start" : "end"}" font-size="12" letter-spacing=".1" fill="${t.mute}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"><tspan fill="${t.ink}" font-size="13" font-weight="700">${s.pct}%</tspan> ${esc(s.label)}</text>`;
   };
   const place = (list, side) => {
     list.sort((p, q) => pt(1, p.mid).y - pt(1, q.mid).y);
@@ -375,9 +398,12 @@ function mixPie(data, t, x0, w, top, size = 1) {
   const labels = sum ? place(right, 1) + place(left, -1) : `<text x="${r1(cx + R + 22)}" y="${cy + 4}" font-size="11" fill="${t.mute}">No activity yet</text>`;
 
   return `<text x="${x0 + w / 2}" y="${top}" text-anchor="middle" font-size="12" font-weight="600" letter-spacing=".4" fill="${t.mute}">Contribution mix · last 12 months</text>
-  <radialGradient id="mixGloss" cx="35%" cy="28%" r="75%"><stop offset="0" stop-color="#ffffff" stop-opacity=".28"/><stop offset=".55" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
-  <mask id="mixHole"><rect x="${r1(cx - R - 2)}" y="${r1(cy - R - 2)}" width="${r1(2 * R + 4)}" height="${r1(2 * R + 4)}" fill="#fff"/><circle cx="${r1(cx)}" cy="${r1(cy)}" r="${r1(R * hole)}" fill="#000"/></mask>
-  ${sides}${inner}${tops}<g mask="url(#mixHole)">${gloss}</g>${track}${labels}`;
+  <defs>${grads.join("")}
+  <radialGradient id="mixGloss" cx="34%" cy="26%" r="78%"><stop offset="0" stop-color="#ffffff" stop-opacity=".26"/><stop offset=".5" stop-color="#ffffff" stop-opacity=".04"/><stop offset=".75" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+  <radialGradient id="mixHoleShade" r="50%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="${t.dark ? ".55" : ".22"}"/></radialGradient>
+  <linearGradient id="mixRim" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset=".5" stop-color="#ffffff" stop-opacity=".75"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+  <mask id="mixHole"><rect x="${r1(cx - R - 2)}" y="${r1(cy - R - 2)}" width="${r1(2 * R + 4)}" height="${r1(2 * R + 4)}" fill="#fff"/><circle cx="${r1(cx)}" cy="${r1(cy)}" r="${r1(R * hole)}" fill="#000"/></mask></defs>
+  ${ground}${sides}${inner}${tops}<g mask="url(#mixHole)">${gloss}</g>${sum ? holeShade + sepLayer + rimLight : ""}${track}${labels}`;
 }
 
 // Top left: the contribution mix as a free-standing small 3D pie, with its
