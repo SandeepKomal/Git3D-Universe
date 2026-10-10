@@ -14,7 +14,7 @@ Git3D Universe turns your GitHub year into a small solar system, drawn as one se
 - **The year as a 3D pie:** one wedge per month, read clockwise like a clock face. Each wedge rises with that month's contributions and carries its name, and the busiest month is outlined in gold with its total.
 - **A glowing core** sits in the middle of the ring.
 - **Planets:** your top repositories orbit the pie, passing behind it and in front of it, sized by stars.
-- **Contribution mix:** a small 3D pie in the top-left shows how your year splits between commits, pull requests, issues and code review, with each share labelled beside its slice.
+- **Contribution mix:** a small upright 3D pie in the top-left shows how your year splits between commits, pull requests, issues and code review, with each share labelled beside its slice.
 - **Night and day:** `aurora` is deep space and `daylight` a soft dawn sky, with the same cosmic colour wheel.
 
 It can be used locally as a Node.js CLI or directly as a reusable GitHub Action.

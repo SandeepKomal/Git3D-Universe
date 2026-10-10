@@ -75,6 +75,7 @@ test("the corner pie shows only commits, pull requests, issues and code review, 
   assert.deepEqual(shares.map((m) => m[2]).sort(), ["Code review", "Commits", "Issues", "Pull requests"]);
   assert.equal(shares.reduce((s, m) => s + Number(m[1]), 0), 100);
   assert.ok(!svg.includes("% Other") && !svg.includes("</tspan> Other<"), "no Other slice");
+  assert.ok(svg.includes('mask="url(#mixHole)"'), "the upright pie keeps a clear hole");
 });
 
 test("odd or missing mix values cannot break the corner pie", () => {

@@ -16,7 +16,7 @@ A new look of Git3D Universe's own. The 3D grid of bars, the neon edges and the 
 - Repository planets now circle the pie, passing behind it on the far side and in front of it on the near side. Far-side names hide only while they would overlap the pie.
 
 ### Contribution mix
-- A small tilted 3D pie in the top-left shows how the year splits between commits, pull requests, issues and code review, as shares of those four (like GitHub's activity overview). Each slice's share and name sit beside it on a short leader line, so the split never relies on colour alone. Its four colours were checked for colour-blind separation in both themes.
+- A small upright 3D pie in the top-left, facing the viewer, shows how the year splits between commits, pull requests, issues and code review, as shares of those four (like GitHub's activity overview). Each slice's share and name sit beside it on a short leader line, so the split never relies on colour alone. Its four colours were checked for colour-blind separation in both themes.
 - The GitHub query now also reads `totalCommitContributions`, `totalPullRequestContributions`, `totalIssueContributions` and `totalPullRequestReviewContributions`. No new scopes are needed.
 
 ### Cosmic themes

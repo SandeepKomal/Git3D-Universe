@@ -299,9 +299,9 @@ function orbits(data, t, animate, blockers) {
   };
 }
 
-// Contribution mix: a small tilted 3D pie in the card, matching the big one,
-// showing how the year's contributions split between commits, pull requests,
-// issues and code review, as shares of those four, like GitHub's overview.
+// Contribution mix: a small upright 3D pie facing the viewer, showing how the
+// year's contributions split between commits, pull requests, issues and code
+// review, as shares of those four, like GitHub's overview.
 // Each slice's share and name sit beside it on a short leader line, as on
 // GitHub's activity overview, so the split never relies on colour alone.
 function mixPie(data, t, x0, w, top, size = 1) {
@@ -317,11 +317,27 @@ function mixPie(data, t, x0, w, top, size = 1) {
   const pct = raw.map(Math.floor);
   raw.map((v, i) => [v - pct[i], i]).sort((a, b) => b[0] - a[0]).slice(0, 100 - pct.reduce((s, v) => s + v, 0)).forEach(([, i]) => pct[i]++);
 
-  // A disc seen from above at the same tilt as the big pie: angle 0 is the
-  // back, slices run clockwise, and the near rim shows its thickness.
-  const cx = x0 + w / 2, cy = top + 30 + 26 * size, rx = 46 * size, ry = 23 * size, thick = 9 * size, hole = 0.42;
-  const pt = (k, a, dy = 0) => ({ x: cx + k * rx * Math.sin(a), y: cy - k * ry * Math.cos(a) + dy });
-  const arcPts = (k, a0, a1, dy = 0, n = 24) => Array.from({ length: n + 1 }, (_, i) => pt(k, a0 + ((a1 - a0) * i) / n, dy));
+  // An upright disc facing the viewer, like a coin standing on its edge:
+  // angle 0 is 12 o'clock and slices run clockwise. The disc has depth, so
+  // its rim shows on the lower right and the hole's wall on the upper left.
+  const R = 40 * size, hole = 0.46, depth = 7 * size;
+  const cx = x0 + w / 2, cy = top + 22 + R;
+  const off = { x: depth * 0.72, y: depth * 0.7 };
+  const pt = (k, a, back = false) => ({ x: cx + k * R * Math.sin(a) + (back ? off.x : 0), y: cy - k * R * Math.cos(a) + (back ? off.y : 0) });
+  const arcPts = (k, a0, a1, back = false, n = 24) => Array.from({ length: n + 1 }, (_, i) => pt(k, a0 + ((a1 - a0) * i) / n, back));
+  // Where a ring's wall faces the viewer: the outer wall where it faces the
+  // depth direction, the hole's wall where it faces away from it.
+  const facesOut = (a) => Math.sin(a) * off.x - Math.cos(a) * off.y > 0;
+  const runs = (a0, a1, want) => {
+    const list = [];
+    let start = null;
+    for (let i = 0; i <= 48; i++) {
+      const a = a0 + ((a1 - a0) * i) / 48;
+      if (want(a) && start === null) start = a;
+      if ((!want(a) || i === 48) && start !== null) { list.push([start, a]); start = null; }
+    }
+    return list;
+  };
   const poly = (list, fill) => `<polygon points="${list.map((p) => `${r1(p.x)},${r1(p.y)}`).join(" ")}" fill="${fill}"/>`;
   const gap = parts.length > 1 ? 0.03 : 0;
   let a = 0;
@@ -334,21 +350,18 @@ function mixPie(data, t, x0, w, top, size = 1) {
   let sides = "", inner = "", tops = "";
   for (const s of slices) {
     if (s.a1 <= s.a0) continue;
-    // Outer wall on the near half, inner wall of the hole on the far half.
-    const lo = Math.max(s.a0, Math.PI / 2), hi = Math.min(s.a1, (3 * Math.PI) / 2);
-    if (hi > lo) sides += poly([...arcPts(1, lo, hi), ...arcPts(1, lo, hi, thick).reverse()], adjust(s.colour, 0.62));
-    for (const [l, h] of [[s.a0, Math.min(s.a1, Math.PI / 2)], [Math.max(s.a0, (3 * Math.PI) / 2), s.a1]]) {
-      if (h > l) inner += poly([...arcPts(hole, l, h), ...arcPts(hole, l, h, thick).reverse()], adjust(s.colour, 0.5));
-    }
-    tops += poly([...arcPts(1, s.a0, s.a1), ...arcPts(hole, s.a0, s.a1).reverse()], adjust(s.colour, t.dark ? 1.05 : 1.08));
+    for (const [l, h] of runs(s.a0, s.a1, facesOut)) sides += poly([...arcPts(1, l, h), ...arcPts(1, l, h, true).reverse()], adjust(s.colour, 0.6));
+    for (const [l, h] of runs(s.a0, s.a1, (a) => !facesOut(a))) inner += poly([...arcPts(hole, l, h), ...arcPts(hole, l, h, true).reverse()], adjust(s.colour, 0.45));
+    tops += poly([...arcPts(1, s.a0, s.a1), ...arcPts(hole, s.a0, s.a1).reverse()], s.colour);
   }
-  const track = sum ? "" : poly([...arcPts(1, 0, 2 * Math.PI, 0, 48), ...arcPts(hole, 0, 2 * Math.PI, 0, 48).reverse()], t.mixTrack);
+  const gloss = sum ? `<circle cx="${r1(cx)}" cy="${r1(cy)}" r="${r1(R)}" fill="url(#mixGloss)"/><circle cx="${r1(cx)}" cy="${r1(cy)}" r="${r1(R * hole)}" fill="${t.bgOuter}" fill-opacity="0"/>` : "";
+  const track = sum ? "" : poly([...arcPts(1, 0, 2 * Math.PI, false, 48), ...arcPts(hole, 0, 2 * Math.PI, false, 48).reverse()], t.mixTrack);
 
   // Labels: slices on the right half label to the right, the rest to the
   // left, spread so they never overlap.
   const labelFor = (s, side, ly) => {
-    const edge = pt(1, s.mid, Math.cos(s.mid) < 0 ? thick / 2 : 0);
-    const lx = side > 0 ? cx + rx + 26 : cx - rx - 26;
+    const edge = pt(1.02, s.mid, facesOut(s.mid));
+    const lx = side > 0 ? cx + R + 34 : cx - R - 34;
     return `<polyline points="${r1(edge.x)},${r1(edge.y)} ${r1(lx - side * 8)},${r1(ly - 4)} ${r1(lx)},${r1(ly - 4)}" fill="none" stroke="${s.colour}" stroke-width="1.2"/>` +
       `<circle cx="${r1(edge.x)}" cy="${r1(edge.y)}" r="2.2" fill="${s.colour}"/>` +
       `<text x="${r1(lx + side * 4)}" y="${r1(ly)}" text-anchor="${side > 0 ? "start" : "end"}" font-size="12" fill="${t.mute}" paint-order="stroke" stroke="${t.bgOuter}" stroke-width="3" stroke-linejoin="round"><tspan fill="${t.ink}" font-weight="700">${s.pct}%</tspan> ${esc(s.label)}</text>`;
@@ -359,10 +372,12 @@ function mixPie(data, t, x0, w, top, size = 1) {
     return list.map((s, i) => labelFor(s, side, first + i * step)).join("");
   };
   const right = slices.filter((s) => Math.sin(s.mid) >= 0), left = slices.filter((s) => Math.sin(s.mid) < 0);
-  const labels = sum ? place(right, 1) + place(left, -1) : `<text x="${r1(cx + rx + 22)}" y="${cy + 4}" font-size="11" fill="${t.mute}">No activity yet</text>`;
+  const labels = sum ? place(right, 1) + place(left, -1) : `<text x="${r1(cx + R + 22)}" y="${cy + 4}" font-size="11" fill="${t.mute}">No activity yet</text>`;
 
   return `<text x="${x0 + w / 2}" y="${top}" text-anchor="middle" font-size="12" font-weight="600" letter-spacing=".4" fill="${t.mute}">Contribution mix · last 12 months</text>
-  ${inner}${sides}${tops}${track}${labels}`;
+  <radialGradient id="mixGloss" cx="35%" cy="28%" r="75%"><stop offset="0" stop-color="#ffffff" stop-opacity=".28"/><stop offset=".55" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+  <mask id="mixHole"><rect x="${r1(cx - R - 2)}" y="${r1(cy - R - 2)}" width="${r1(2 * R + 4)}" height="${r1(2 * R + 4)}" fill="#fff"/><circle cx="${r1(cx)}" cy="${r1(cy)}" r="${r1(R * hole)}" fill="#000"/></mask>
+  ${sides}${inner}${tops}<g mask="url(#mixHole)">${gloss}</g>${track}${labels}`;
 }
 
 // Top left: the contribution mix as a free-standing small 3D pie, with its
