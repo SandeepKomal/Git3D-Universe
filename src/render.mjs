@@ -490,6 +490,7 @@ ${year.peakLabel}
 ${orbit.labels}
 ${mixCorner(data, t)}
 ${legend(stats, t)}
+<text x="40" y="${H - 22}" text-anchor="start" font-size="9" fill="${t.mute}" opacity="0.10">crafted by Sandeep Komal Pothu</text>
 </svg>
 `;
 }
