@@ -17,6 +17,13 @@ for (const theme of Object.keys(themes)) {
   });
 }
 
+test("includes the ultra-subtle creator credit in both themes", () => {
+  for (const theme of Object.keys(themes)) {
+    const svg = renderSvg(sampleData(), { theme });
+    assert.ok(svg.includes('opacity="0.10">crafted by Sandeep Komal Pothu</text>'));
+  }
+});
+
 test("output is deterministic", () => {
   assert.equal(renderSvg(sampleData()), renderSvg(sampleData()));
 });
