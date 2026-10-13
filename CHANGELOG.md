@@ -2,6 +2,14 @@
 
 All notable changes to Git3D Universe are documented here.
 
+## [2.0.1] - 2026-10-13
+
+### Added
+- Add an ultra-subtle creator credit, `crafted by Sandeep Komal Pothu`, to the bottom-left of generated SVGs at 0.10 opacity.
+
+### Fixed
+- Update the release workflow default version to match the next patch release, avoiding the stale `1.0.0` input.
+
 ## [2.0.0] - 2026-10-10
 
 A new look of Git3D Universe's own. The 3D grid of bars, the neon edges and the colour wave are gone; they now live on in the separate Neon Arena project.
