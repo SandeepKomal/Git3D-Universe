@@ -1,6 +1,6 @@
 {
   "name": "git3d-universe",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Turn your GitHub year into a 3D pie of months with your top repositories orbiting it, as an SVG for profile READMEs.",
   "type": "module",
   "bin": {
