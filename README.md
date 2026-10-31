@@ -5,7 +5,7 @@
 </p>
 
 <picture>
-  <source media="(prefers-color-scheme: light)" srcset="./preview-light.svg">
+  <source media="(prefers-color-scheme: light)" srcset="./preview-dark.svg">
   <img alt="Git3D Universe: a year of contributions as a 3D pie of month wedges round a glowing core, with top repositories orbiting as planets and a small pie of the contribution mix" src="./preview-dark.svg">
 </picture>
 

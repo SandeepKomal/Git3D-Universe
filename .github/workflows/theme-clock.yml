@@ -1,0 +1,54 @@
+name: Theme clock
+
+# Same schedule as the SandeepKomal profile's reconciler, so the profile,
+# Git3D Universe and Neon Arena switch between dark and light together.
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: theme-clock
+  cancel-in-progress: false
+
+jobs:
+  switch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # commit the README when the theme flips
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Point the preview at the IST theme
+        run: python3 .github/scripts/theme-clock.py --apply
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git add README.md
+          if git diff --cached --quiet; then
+            echo "No change."
+            exit 0
+          fi
+          # checkout keeps no credentials; the token is used for this push only
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "chore: switch preview to the IST theme"
+          for attempt in 1 2 3 4; do
+            git fetch -q origin main
+            git rebase -q origin/main
+            if git push -q origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          echo "Push failed after 4 attempts; if main is protected, allow github-actions to push." >&2
+          exit 1

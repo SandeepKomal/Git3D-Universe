@@ -2,6 +2,10 @@
 
 All notable changes to Git3D Universe are documented here.
 
+## [Unreleased]
+
+- **Preview follows IST time:** the README preview shows the dark render from 18:00 to 06:00 IST and the light render otherwise, for every viewer, switched by the `theme-clock` workflow every 15 minutes on the same clock as the SandeepKomal profile. Previously it followed each viewer's own theme setting.
+
 ## [2.0.0] - 2026-10-10
 
 A new look of Git3D Universe's own. The 3D grid of bars, the neon edges and the colour wave are gone; they now live on in the separate Neon Arena project.
